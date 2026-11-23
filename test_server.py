@@ -230,6 +230,16 @@ class DataTests(unittest.TestCase):
         self.assertEqual(cfg["metric"],"hop")
         self.assertEqual(cfg["algorithm"],"dijkstra-hop")
 
+    def test_dijkstra_baselines_resolve_to_dijkstra_in_live_and_default_ini(self):
+        ini = Path(server.INI_PATH)
+        for path in (ini, ini.with_suffix(".defaults")):
+            for name in ("Dijkstra132StationsOnly", "PaperS1DijkstraCutFlood",
+                         "PaperS1DijkstraCutFloodLoad"):
+                with self.subTest(ini=path.name, config=name):
+                    cfg = server.read_ini_config(name, entry_path=str(path))
+                    self.assertEqual((cfg["algorithm"], cfg["routingType"], cfg["metric"]),
+                                     ("dijkstra-delay", "Sat_Net_DijkstraRouting", "delay"))
+
     def test_derived_routing_selector_overrides_ancestor_saved_algorithm(self):
         from config_editor import edit
         import shutil

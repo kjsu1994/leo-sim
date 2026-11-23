@@ -513,6 +513,9 @@ extends = PaperS1McsrCut, FailureKnowledge
 
 
 [Config PaperS1DijkstraCutFlood]
+*.satellite[*].net.routing.algorithm = "dijkstra-delay"
+*.satellite[*].net.routingType = "Sat_Net_DijkstraRouting"
+*.satellite[*].net.routing.metric = "delay"
 description = "Paper environment, SPF baseline, same cuts with detection + global flooding + SPF delay"
 extends = PaperS1DijkstraCut, FailureKnowledge
 *.satellite[*].net.routing.spfDelay = 50ms
