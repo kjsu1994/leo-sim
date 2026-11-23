@@ -24,6 +24,7 @@ Tree dijkstra(const std::vector<std::vector<Edge>> &adj, int root, bool hop) {
   t.delay.assign(n, INFINITY);
   using Q = std::pair<double, int>;
   std::priority_queue<Q, std::vector<Q>, std::greater<Q>> q;
+  t.hops[root] = 0;
   t.cost[root] = 0;
   t.delay[root] = 0;
   q.push({0, root});

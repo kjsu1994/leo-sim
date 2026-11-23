@@ -16,6 +16,10 @@ int main() {
   assert(a.next[0] == 1 && a.cost[0] == 3);
   assert(b.next[0] == 3);
   assert(a.next[4] == -1);
+  assert(a.hops[3] == 0 && b.hops[3] == 0);
+  assert(a.hops[2] == 1 && a.hops[0] == 3);
+  assert(b.hops[0] == 1);
+  assert(a.hops[4] == -1 && b.hops[4] == -1);
   g.assign(4, {});
   add(0, 1, 1);
   add(0, 2, 1);
