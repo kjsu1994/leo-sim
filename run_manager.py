@@ -351,6 +351,8 @@ def start(base,settings,ini,name,read_config,variables=None,algorithms=None,rese
     seeds=[seed_start+i for i in range(repetitions)]
     with LOCK:
         if any(j['status'] in ('queued','running','stopping') for j in JOBS.values()):raise ValueError('다른 계산이 실행 중입니다.')
+        while len(JOBS) >= 16:
+            del JOBS[next(iter(JOBS))]
         run_id=new_id();event=threading.Event();job={'runId':run_id,'status':'queued','cancel':event,'base':str(base),'results':str(results) if results is not None else None,'executionMode':mode,'activeRuns':[]};JOBS[run_id]=job
     def work():
         job['status']='running';job['phase']='preparing';job['started']=time.monotonic();job['completedRuns']=[]
@@ -484,7 +486,7 @@ def start(base,settings,ini,name,read_config,variables=None,algorithms=None,rese
                 manifest['status']='completed';save_manifest()
                 if results is None and assets is None:publish_latest(base,result)
                 else:publish_latest(base,result,offline_copy=False,results=results)
-                job['result']=manifest if algorithms is not None else result;job['status']='completed'
+                job['status']='completed'
         except Exception as error:
             status='cancelled' if isinstance(error,InterruptedError) else 'failed'
             if status=='failed':logger.exception('Run %s failed',run_id)

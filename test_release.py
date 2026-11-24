@@ -19,7 +19,8 @@ class ReleaseTests(unittest.TestCase):
                          "manual/assets/ini-trial-selected.png", "settings/simulations/Network/scenarios.defaults"):
                 self.assertTrue((package / file).is_file(), file)
             ini = "settings/simulations/Network/scenarios.ini"
-            self.assertEqual((package / ini).read_bytes(), (build_release.ROOT / ini).read_bytes())
+            self.assertEqual((package / ini).read_bytes(), (package / ini).with_suffix(".defaults").read_bytes())
+            self.assertFalse(list((package / ini).parent.glob("scenarios/scenario-*.json")))
             self.assertFalse((package / ".git").exists())
             self.assertFalse((package / "build").exists())
             self.assertFalse((package / "dist").exists())

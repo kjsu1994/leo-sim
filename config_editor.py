@@ -33,7 +33,7 @@ def default_text(path,text,config):
     first,last=section_bounds(source,config)
     newline='\r\n' if '\r\n' in text else '\n'
     metadata = [line for line in lines[start:end] if re.match(r'\s*(?:displayName|additional)\s*=', line)]
-    restored = metadata + source[first:last]
+    restored = metadata + [line for line in source[first:last] if not re.match(r'\s*(?:displayName|additional)\s*=', line)]
     return ''.join(lines[:start] + [line.rstrip('\r\n') + newline for line in restored] + lines[end:])
 
 def read_preview(path,config,text):

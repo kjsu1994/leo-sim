@@ -2,9 +2,10 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="sim-ui.ico?v=20261120-map" type="image/x-icon">
   <title>LEO Network Simulator</title>
-  <link rel="stylesheet" href="style.css?v=20261120-recovery-details">
+  <link rel="stylesheet" href="style.css?v=20261123-playback">
 </head>
 <body>
   <header class="topbar">
@@ -15,15 +16,17 @@
       </a>
     </div>
     <div class="controls">
+      <div class="playback-controls">
       <div class="transport">
-      <button id="btnPlay">▶ Play</button>
+      <button id="btnPlay">▶ 재생</button>
       <button id="btnStepBack" title="-1s">-1s</button>
       <button id="btnStepFwd" title="+1s">+1s</button>
-      <button id="btnSnap" title="Jump to t=1210s reference">t = 1210s</button>
+      <button id="btnSnap" title="재생 시작 시각으로 이동">처음으로</button>
       </div>
       <div class="playhead">
-      <input id="timeSlider" type="range" min="0" max="5700" step="0.1" value="1210">
-      <span id="timeLabel" class="mono">t = 1210.0 s</span>
+      <input id="timeSlider" type="range" min="0" max="0" step="0.1" value="0" aria-label="재생 시각">
+      <span id="timeLabel" class="mono">0.0 s</span>
+      </div>
       </div>
       <select id="speedSel" aria-label="재생 배율">
         <option value="1">1x</option>
@@ -45,6 +48,8 @@
       <span class="run-spinner" aria-hidden="true"></span>
       <span id="runActivityText" role="status"></span><span id="runActivityDetail"></span>
       <progress id="runProgress" max="1" aria-label="전체 계산 진행률" hidden></progress>
+      <button id="btnRetryStatus" type="button" hidden>상태 다시 확인</button>
+      <button id="btnRetryResult" type="button" hidden>결과 다시 열기</button>
       <button id="btnStopSim" type="button" hidden>중지</button>
     </div>
   </header>
@@ -70,7 +75,7 @@
     <aside class="sidebar" id="sidePanel">
       <div class="card sim-runner">
         <div class="runner-head">
-          <span id="scenarioHeading">새 시뮬레이션</span>
+          <span id="scenarioHeading">시험 설정</span>
           <div class="head-btns">
             <button id="btnSettings" type="button">조건 수정</button>
           </div>
@@ -124,14 +129,13 @@
       </div>
 
       <div class="card kpis">
-        <div><small>Satellites / ISL</small><strong id="kpiSat">132 / 264</strong></div>
-        <div><small id="kpiGslLabel">Active GSL (≥10°)</small><strong id="kpiGsl">36</strong></div>
-        <div><small>계획 경로 (현재 / 전체)</small><strong id="kpiPkts">5416</strong></div>
-        <div><small>Predicted propagation / ISL hops</small><strong id="kpiDelay">47.6 ms / 3.4</strong></div>
+        <div><small>누적 계획 경로</small><strong id="kpiPkts">—</strong></div>
+        <div><small>평균 예상 전파 지연</small><strong id="kpiDelay">—</strong></div>
+        <div><small>평균 위성 간 홉 수</small><strong id="kpiHops">—</strong></div>
       </div>
 
       <section class="card native-metrics" id="nativeMetrics" hidden>
-        <div class="runner-head"><span>수신 결과</span><div class="head-btns result-actions">
+        <div class="runner-head"><span>수신 결과 · 시험 전체</span><div class="head-btns result-actions">
           <button id="btnMetricDetails" type="button" aria-haspopup="dialog">자세한 결과</button>
           <button id="btnCompare" type="button">실행 비교</button>
         </div></div>
@@ -153,13 +157,13 @@
 
       <div class="card log-card">
         <div class="log-head">
-          <span>Recent Planned Routes</span>
-          <small id="activeCount">0 active</small>
+          <span>최근 계획 경로</span>
+          <small id="activeCount"></small>
         </div>
         <div class="table-scroll">
           <table id="routeTable">
             <thead>
-              <tr><th>Time</th><th>Source → Dest</th><th>Hops</th><th>Predicted propagation</th><th>Path</th></tr>
+              <tr><th>시각</th><th>출발 → 도착</th><th>홉 수</th><th>예상 전파 지연</th><th>경로</th></tr>
             </thead>
             <tbody></tbody>
           </table>
@@ -189,9 +193,9 @@
           </section>
   </div>
 </dialog>
-<dialog id="settingsDialog"><form id="settingsForm"><div class="dialog-heading"><h2>시험 조건</h2><button type="button" data-close="settingsDialog" aria-label="닫기">×</button></div><div id="settingsFields"></div><p id="settingsError" class="form-error" role="alert"></p><div class="dialog-actions"><button type="button" id="settingsDefaults" title="선택한 구성의 제공 설정을 불러옵니다. 상속값은 현재 상위 설정을 따릅니다.">기본값</button><span id="settingsDefaultsStatus" class="quiet" role="status"></span><button type="button" data-close="settingsDialog">취소</button><button type="submit" class="btn-primary">INI에 저장</button></div></form></dialog>
-<dialog id="compareDialog"><div class="dialog-heading"><h2>실행 비교</h2><button data-close="compareDialog" aria-label="닫기">×</button></div><div id="singleComparisonControls" class="compare-controls"><label>기준 실행<select id="baselineRun"></select></label><label>비교 실행<select id="scenarioRun"></select></label><button id="loadComparison" class="btn-primary">비교</button><label class="file-btn">기준 폴더<input id="baselineFolder" type="file" webkitdirectory multiple hidden></label><label class="file-btn">비교 폴더<input id="comparisonFolder" type="file" webkitdirectory multiple hidden></label></div><div id="experimentHistoryRow" class="compare-controls" hidden><label>반복 실험<select id="experimentHistory"></select></label><button id="loadExperiment" type="button">통계 보기</button></div><p id="comparisonStatus" role="status"></p><div id="comparisonContent"></div></dialog>
-<dialog id="experimentDialog"><form id="experimentForm"><div class="dialog-heading"><h2>비교 실행</h2><button type="button" data-close="experimentDialog" aria-label="닫기">×</button></div><div id="experimentAlgorithms" class="editor-grid"></div><div class="editor-grid"><label class="editor-field"><span>반복 횟수</span><select id="experimentRepetitions"><option value="1">1회</option><option value="10">10회 · 예비 시험</option><option value="30">30회 · 최종 비교</option></select></label><label class="editor-field"><span>실행 방식</span><select id="experimentExecution"><option value="auto">자동 · 최대 2개</option><option value="sequential">순차 · 1개씩</option></select></label></div><details class="experiment-options"><summary>고급 설정</summary><div class="editor-grid"><label class="editor-field"><span>시작 시드</span><input id="experimentSeed" required type="number" min="0" max="2147483547" step="1"></label><label class="editor-field"><span>준비 구간 (s)</span><input id="experimentWarmup" required type="number" min="0" step="any"></label><label class="editor-field"><span>종료 관측 구간 (s)</span><input id="experimentDrain" required type="number" min="0" step="any"></label></div></details><p id="experimentConditions" class="quiet" style="padding:0 20px"></p><p id="experimentTotal" class="quiet" role="status" style="padding:0 20px"></p><p id="experimentError" class="form-error" role="alert"></p><div class="dialog-actions"><button type="button" data-close="experimentDialog">취소</button><button type="submit" class="btn-primary">실행</button></div></form></dialog>
+<dialog id="settingsDialog" aria-labelledby="settingsDialogTitle"><form id="settingsForm"><div class="dialog-heading"><h2 id="settingsDialogTitle">시험 조건</h2><button type="button" data-close="settingsDialog" aria-label="닫기">×</button></div><div id="settingsFields"></div><p id="settingsError" class="form-error" role="alert"></p><div class="dialog-actions"><button type="button" id="settingsDefaults" title="선택한 구성의 제공 설정을 불러옵니다. 상속값은 현재 상위 설정을 따릅니다.">기본값</button><span id="settingsDefaultsStatus" class="quiet" role="status"></span><button type="button" data-close="settingsDialog">취소</button><button type="submit" class="btn-primary">INI에 저장</button></div></form></dialog>
+<dialog id="compareDialog" aria-labelledby="compareDialogTitle"><div class="dialog-heading"><h2 id="compareDialogTitle">실행 비교</h2><button data-close="compareDialog" aria-label="닫기">×</button></div><div id="singleComparisonControls" class="compare-controls"><label>기준 실행<select id="baselineRun"></select></label><label>비교 실행<select id="scenarioRun"></select></label><button id="loadComparison" class="btn-primary">비교</button><label class="file-btn">기준 폴더<input id="baselineFolder" type="file" webkitdirectory multiple hidden></label><label class="file-btn">비교 폴더<input id="comparisonFolder" type="file" webkitdirectory multiple hidden></label></div><div id="experimentHistoryRow" class="compare-controls" hidden><label>반복 실험<select id="experimentHistory"></select></label><button id="loadExperiment" type="button">통계 보기</button></div><p id="comparisonStatus" role="status"></p><div id="comparisonContent"></div></dialog>
+<dialog id="experimentDialog" aria-labelledby="experimentDialogTitle"><form id="experimentForm"><div class="dialog-heading"><h2 id="experimentDialogTitle">비교 실행</h2><button type="button" data-close="experimentDialog" aria-label="닫기">×</button></div><div id="experimentAlgorithms" class="editor-grid"></div><div class="editor-grid"><label class="editor-field"><span>반복 횟수</span><select id="experimentRepetitions"><option value="1">1회</option><option value="10">10회 반복</option><option value="30">30회 반복</option></select></label><label class="editor-field"><span>실행 방식</span><select id="experimentExecution"><option value="auto">자동 · 최대 2개</option><option value="sequential">순차 · 1개씩</option></select></label></div><details class="experiment-options"><summary>고급 설정</summary><div class="editor-grid"><label class="editor-field"><span>시작 시드</span><input id="experimentSeed" required type="number" min="0" max="2147483547" step="1"></label><label class="editor-field"><span>준비 구간 (s)</span><input id="experimentWarmup" required type="number" min="0" step="any"></label><label class="editor-field"><span>종료 관측 구간 (s)</span><input id="experimentDrain" required type="number" min="0" step="any"></label></div></details><p id="experimentConditions" class="quiet" style="padding:0 20px"></p><p id="experimentTotal" class="quiet" role="status" style="padding:0 20px"></p><p id="experimentError" class="form-error" role="alert"></p><div class="dialog-actions"><button type="button" data-close="experimentDialog">취소</button><button type="submit" class="btn-primary">실행</button></div></form></dialog>
 <dialog id="resultDialog" aria-labelledby="resultDialogTitle">
   <div class="dialog-heading"><h2 id="resultDialogTitle">실행 결과 열기</h2><button type="button" data-close="resultDialog" aria-label="닫기">×</button></div>
   <div class="result-picker">
@@ -201,7 +205,7 @@
   </div>
   <div class="dialog-actions"><button id="btnBrowseResult" type="button">외부 폴더 열기</button><button id="btnReplayResult" type="button" class="btn-primary" disabled>선택 결과 재생</button></div>
 </dialog>
-<script src="app.js?v=20261120-scenario-names"></script>
-<script src="editor.js?v=20261120-scenario-names"></script>
+<script src="app.js?v=20261123-playback"></script>
+<script src="editor.js?v=20261123-playback"></script>
 </body>
 </html>

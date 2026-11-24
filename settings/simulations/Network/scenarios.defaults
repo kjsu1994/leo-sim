@@ -145,6 +145,7 @@ include ../Custom_default/configurations/BandSelection.ini
 include ../Custom_default/configurations/Services.ini
 
 [Config Dijkstra132]
+displayName = "기본 통신"
 *.satellite[*].net.routing.metric = "delay"
 *.satellite[*].net.routing.algorithm = "dijkstra-delay"
 *.satellite[*].net.routingType = "Sat_Net_DijkstraRouting"
@@ -160,11 +161,14 @@ extends = BlindKineis, UHF, ServiceEveryMinute
 *.station[*].traffic.packetSize = 1000B
 
 [Config Dijkstra132Hop]
+displayName = "기본 통신 · 홉 최소"
+additional = true
 description = "Same traffic, hop-count shortest path (delay tie-break)"
 extends = Dijkstra132
 *.satellite[*].net.routing.metric = "hop"
 
 [Config Dijkstra132Pair]
+displayName = "단일 구간 통신"
 description = "Single downlink flow Goldstone (DSN) -> Flight ICN-LAX for easy visual tracking"
 extends = Dijkstra132
 *.station[0].traffic.dstStation = 11
@@ -172,6 +176,7 @@ extends = Dijkstra132
 *.station[1..8].traffic.enabled = false
 
 [Config Dijkstra132StationsOnly]
+displayName = "지상국 간 통신"
 *.satellite[*].net.routing.algorithm = "dijkstra-delay"
 *.satellite[*].net.routingType = "Sat_Net_DijkstraRouting"
 *.satellite[*].net.routing.metric = "delay"
@@ -185,6 +190,8 @@ description = "IoT terminals (DSL radio uplink) -> nearest station. NOTE: uplink
 extends = BlindKineis, UHF, ServiceEveryMinute
 
 [Config Mcsr132]
+displayName = "기본 통신 · MCSR-LS"
+additional = true
 *.native.controlMtu = 1500
 *.native.controlReassemblyTimeout = 3
 *.native.controlResyncInterval = 30
@@ -292,18 +299,24 @@ extends = Dijkstra132
 
 
 [Config Mcsr132TS]
+displayName = "기본 통신 · MCSR-TS"
+additional = true
 description = "MCSR routing, throughput-sensitive (TS) service: largest available buffer"
 extends = Mcsr132
 *.satellite[*].net.routing.service = "TS"
 
 
 [Config Mcsr132HR]
+displayName = "기본 통신 · MCSR-HR"
+additional = true
 description = "MCSR routing, high-reliability (HR) service: jitter < 15 ms, then largest available buffer"
 extends = Mcsr132
 *.satellite[*].net.routing.service = "HR"
 
 
 [Config Mcsr132Pair]
+displayName = "단일 구간 통신 · MCSR"
+additional = true
 description = "MCSR: single downlink flow Goldstone (DSN) -> Flight ICN-LAX for easy visual tracking"
 extends = Mcsr132
 *.station[0].traffic.dstStation = 11
@@ -325,6 +338,8 @@ seed-1-mt = 4242
 
 
 [Config Mcsr132PairFail]
+displayName = "반복 링크 장애 · MCSR"
+additional = true
 description = "MCSR, 1 flow (50 pkt/s) Goldstone -> Flight ICN-LAX; the path in use is cut at 60/120/180 s for 30 s"
 extends = Mcsr132Pair, IslFailures
 sim-time-limit = 300s
@@ -333,6 +348,7 @@ sim-time-limit = 300s
 
 
 [Config Dijkstra132PairFail]
+displayName = "반복 링크 장애"
 description = "Dijkstra baseline for Mcsr132PairFail: identical traffic and failures"
 extends = Dijkstra132Pair, IslFailures
 sim-time-limit = 300s
@@ -341,6 +357,8 @@ sim-time-limit = 300s
 
 
 [Config Mcsr132RandomFail]
+displayName = "무작위 링크 장애 · MCSR"
+additional = true
 description = "MCSR, default downlink traffic, 20 random ISL failures of 30 s between 30 and 570 s"
 extends = Mcsr132, IslFailures
 *.islFailures.randomFailures = 20
@@ -350,6 +368,7 @@ extends = Mcsr132, IslFailures
 
 
 [Config Dijkstra132RandomFail]
+displayName = "무작위 링크 장애"
 description = "Dijkstra baseline for Mcsr132RandomFail: identical traffic and failures"
 extends = Dijkstra132, IslFailures
 *.islFailures.randomFailures = 20
@@ -359,6 +378,7 @@ extends = Dijkstra132, IslFailures
 
 
 [Config PaperS1]
+displayName = "대규모 단일 구간"
 description = "Paper environment: Starlink S1 + 100 city GS, CBR Rio de Janeiro (station[18]) -> Sankt Peterburg (station[73]); Dijkstra routing"
 extends = BlindKineis, UHF, ServiceEveryMinute
 sim-time-limit = 200s
@@ -390,6 +410,7 @@ include stations/WorldCities100.ini
 
 
 [Config PaperS1Load]
+displayName = "대규모 부하"
 description = "Paper environment, background load: the 20 largest cities send CBR to random cities (all rates 10..50 Mbit/s)"
 extends = PaperS1
 *.station[0..19].traffic.enabled = true
@@ -400,6 +421,8 @@ extends = PaperS1
 
 
 [Config PaperS1Mcsr]
+displayName = "대규모 단일 구간 · MCSR-LS"
+additional = true
 description = "Paper environment, MCSR-LS (latency-sensitive)"
 extends = PaperS1
 *.satellite[*].net.routingType = "Sat_Net_McsrRouting"
@@ -411,24 +434,32 @@ extends = PaperS1
 
 
 [Config PaperS1McsrTS]
+displayName = "대규모 단일 구간 · MCSR-TS"
+additional = true
 description = "Paper environment, MCSR-TS (throughput-sensitive)"
 extends = PaperS1Mcsr
 *.satellite[*].net.routing.service = "TS"
 
 
 [Config PaperS1McsrHR]
+displayName = "대규모 단일 구간 · MCSR-HR"
+additional = true
 description = "Paper environment, MCSR-HR (high-reliability: jitter < 15 ms, then largest buffer)"
 extends = PaperS1Mcsr
 *.satellite[*].net.routing.service = "HR"
 
 
 [Config PaperS1Dijkstra]
+displayName = "대규모 단일 구간 · Dijkstra"
+additional = true
 description = "Paper environment, delay-shortest-path baseline (SPF)"
 extends = PaperS1
 *.satellite[*].net.routing.metric = "delay"
 
 
 [Config PaperS1McsrFail]
+displayName = "대규모 무작위 링크 장애 · MCSR"
+additional = true
 description = "Paper environment, MCSR-LS with 20 random ISL failures of 30 s (resilient rerouting)"
 extends = PaperS1Mcsr, IslFailures
 *.islFailures.randomFailures = 20
@@ -438,6 +469,8 @@ extends = PaperS1Mcsr, IslFailures
 
 
 [Config PaperS1DijkstraFail]
+displayName = "대규모 무작위 링크 장애 · Dijkstra"
+additional = true
 description = "Paper environment, SPF baseline with the same random ISL failures"
 extends = PaperS1Dijkstra, IslFailures
 *.islFailures.randomFailures = 20
@@ -449,12 +482,16 @@ extends = PaperS1Dijkstra, IslFailures
 # The random configs above rarely hit a single path out of ~3000 ISLs; these always do.
 
 [Config PaperS1McsrCut]
+displayName = "대규모 반복 링크 장애 · MCSR"
+additional = true
 description = "Paper environment, MCSR-LS: the ISL in the middle of the path in use is cut at 60/110/160 s for 30 s"
 extends = PaperS1Mcsr, IslFailures
 *.islFailures.schedule = "route@60+30 route@110+30 route@160+30"
 
 
 [Config PaperS1DijkstraCut]
+displayName = "대규모 반복 링크 장애 · Dijkstra"
+additional = true
 description = "Paper environment, SPF baseline with the same targeted cuts"
 extends = PaperS1Dijkstra, IslFailures
 *.islFailures.schedule = "route@60+30 route@110+30 route@160+30"
@@ -474,18 +511,24 @@ abstract = true
 # (the "/10"); without it the congestion would barely change the path choice of an SPF that knows the delay.
 
 [Config PaperS1McsrCongestion]
+displayName = "대규모 혼잡 · MCSR"
+additional = true
 description = "Paper environment, MCSR-LS, congested region on the path (rho 0.9, 60..160 s) - environment mode, not in the paper"
 extends = PaperS1Mcsr, Congestion
 *.congestionInjector.zones = "circle(22,-19,1500)=0.9/10@60+100"
 
 
 [Config PaperS1DijkstraCongestion]
+displayName = "대규모 혼잡 · Dijkstra"
+additional = true
 description = "Paper environment, SPF baseline, same congested region; SPF does not know about the queueing delay"
 extends = PaperS1Dijkstra, Congestion
 *.congestionInjector.zones = "circle(22,-19,1500)=0.9/10@60+100"
 
 
 [Config PaperS1DijkstraCongestionAware]
+displayName = "대규모 혼잡 · 지연 반영"
+additional = true
 description = "Paper environment, SPF baseline whose link cost includes the injected queueing delay"
 extends = PaperS1DijkstraCongestion
 *.satellite[*].net.routing.congestionAware = true
@@ -506,6 +549,8 @@ abstract = true
 
 
 [Config PaperS1McsrCutFlood]
+displayName = "대규모 장애·복구 · MCSR"
+additional = true
 description = "Paper environment, MCSR-LS, targeted cuts with detection + scoped flooding + local repair"
 extends = PaperS1McsrCut, FailureKnowledge
 *.satellite[*].net.routing.failureScopeHops = 6
@@ -513,6 +558,7 @@ extends = PaperS1McsrCut, FailureKnowledge
 
 
 [Config PaperS1DijkstraCutFlood]
+displayName = "대규모 장애·복구"
 *.satellite[*].net.routing.algorithm = "dijkstra-delay"
 *.satellite[*].net.routingType = "Sat_Net_DijkstraRouting"
 *.satellite[*].net.routing.metric = "delay"
@@ -522,6 +568,8 @@ extends = PaperS1DijkstraCut, FailureKnowledge
 
 
 [Config PaperS1McsrCutFloodRes]
+displayName = "대규모 장애·복구 · 예비 경로"
+additional = true
 description = "Paper environment, MCSR-LS with reserved dominant paths: on a lost link/exit switch to a stored path (suffix from the noticing satellite), recompute only if none is usable"
 extends = PaperS1McsrCutFlood
 *.satellite[*].net.routing.reservedPaths = true
@@ -550,19 +598,27 @@ sim-time-limit = 100s
 
 
 [Config PaperS1DijkstraCutFloodLoad]
+displayName = "대규모 장애·복구 · 배경 부하 · Dijkstra"
+additional = true
 extends = LoadBackground, PaperS1DijkstraCutFlood
 
 
 [Config PaperS1McsrCutFloodLoad]
+displayName = "대규모 장애·복구 · 배경 부하 · MCSR"
+additional = true
 extends = LoadBackground, PaperS1McsrCutFlood
 
 
 [Config PaperS1McsrCutFloodResLoad]
+displayName = "대규모 장애·복구 · 예비 경로·배경 부하"
+additional = true
 extends = LoadBackground, PaperS1McsrCutFloodRes
 
 # ---- DS / CSIB over simulated control packets ----
 
 [Config PaperS1McsrCsib]
+displayName = "대규모 DS·CSIB"
+additional = true
 description = "Paper environment, MCSR-LS with packet-based DS/CSIB (180 s period, voting enabled)"
 extends = PaperS1Mcsr
 *.native.controlMode = "packet"

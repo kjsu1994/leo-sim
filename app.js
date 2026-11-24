@@ -24,20 +24,19 @@ function stateAt(t) {
 function clearResult() {
   window.dispatchEvent(new Event("sim-clear"));
   routes = []; states = []; resultMeta = null; selectedRouteId = null; simTime = 0;
-  playing = false; document.getElementById("btnPlay").textContent = "Play";
+  playing = false; document.getElementById("btnPlay").textContent = "▶ 재생";
 }
 function installResult(result) {
   clearResult();
   previewConfig=null;routes = result.routes; states = result.states; resultMeta = result;
-  simTime = Math.min(1210, result.replay ? result.config.simTimeLimit : (states.length ? states[states.length - 1].t : 0));
   applyLoadedConfig(result.config, { result: true });
-  syncTimeBounds(result.replay ? result.config.simTimeLimit : (states.length ? states[states.length - 1].t : 0));
+  syncTimeBounds(result.replay ? result.config.simTimeLimit : states.at(-1)?.t);
   setStatus(`${scenarioName(result.config.activeConfig, result.config.displayName)} · ${algorithmName(result.config)} 실행 결과를 불러왔습니다.`);
   render();
   window.dispatchEvent(new CustomEvent("sim-result",{detail:result}));
 }
-let simTime = routes.length ? Math.min(1210.0, routes[routes.length - 1][0]) : 0.0;
-let maxSimTime = routes.length ? Math.max(10, Math.ceil(routes[routes.length - 1][0])) : 600.0;
+let simTime = 0;
+let maxSimTime = 0;
 let playing = false, speed = 10, selectedRouteId = null, lastFrame = 0;
 let lastSatStates = [], lastStationStates = [];
 
@@ -65,10 +64,10 @@ function populateFilters() {
 populateFilters();
 
 function syncTimeBounds(limitSec) {
-  const dataMax = routes.length ? Math.ceil(routes[routes.length - 1][0]) : 0;
-  maxSimTime = Math.max(10, dataMax || 0, limitSec || 0);
+  maxSimTime = Number.isFinite(limitSec) && limitSec >= 0 ? limitSec : (routes.length ? routes[routes.length - 1][0] : 0);
   document.getElementById("timeSlider").max = maxSimTime;
-  if (simTime > maxSimTime) simTime = dataMax ? Math.min(maxSimTime, routes[routes.length - 1][0]) : 0;
+  document.getElementById("btnPlay").disabled = maxSimTime === 0;
+  simTime = Math.min(simTime, maxSimTime);
 }
 syncTimeBounds(maxSimTime);
 
@@ -325,12 +324,10 @@ function render() {
 
   document.getElementById("timeLabel").textContent = `t = ${playbackTime(simTime)} s`;
   document.getElementById("timeSlider").value = simTime;
-  document.getElementById("kpiSat").textContent = snapshot ? `${sats.length} / ${islCount}` : "N/A";
-  document.getElementById("kpiGslLabel").textContent = "설정 기반 연결";
-  document.getElementById("kpiGsl").textContent = snapshot ? gslLinks.length : "N/A";
-  document.getElementById("kpiPkts").textContent = `${endIdx} / ${routes.length}`;
-  document.getElementById("kpiDelay").textContent = `${avgMs} ms / ${avgHops}`;
-  document.getElementById("activeCount").textContent = `${windowRoutes.length} in ${routeLifetime}s`;
+  document.getElementById("kpiPkts").textContent = endIdx.toLocaleString("ko-KR");
+  document.getElementById("kpiDelay").textContent = endIdx ? avgMs + " ms" : "—";
+  document.getElementById("kpiHops").textContent = endIdx ? avgHops : "—";
+  document.getElementById("activeCount").textContent = `최근 ${routeLifetime}초 · 최대 25개`;
 
   const tbody = document.querySelector("#routeTable tbody");
   tbody.innerHTML = windowRoutes.slice(0, 25).map(r => {
@@ -346,14 +343,14 @@ function render() {
       <td title="First satellite: ${r[8]}; exit satellite: ${r[9]}; uplink: ${r[10]} ms; satellite-to-station: ${r[11]} ms; total: ${ms} ms">${ms.toFixed(1)}ms</td>
       <td class="path-cell" title="${path.join("-")}">${path.join("-")}</td>
     </tr>`;
-  }).join("");
+  }).join("") || '<tr><td colspan="5">이 시간대에 기록된 경로가 없습니다.</td></tr>';
 }
 
 function loop(ts) {
   if (playing) {
     const dt = lastFrame ? (ts - lastFrame) / 1000 : 0;
     simTime = Math.min(maxSimTime, simTime + dt * speed);
-    if (simTime >= maxSimTime) { playing = false; document.getElementById("btnPlay").textContent = "▶ Play"; }
+    if (simTime >= maxSimTime) { playing = false; document.getElementById("btnPlay").textContent = "▶ 재생"; }
     render();
   }
   lastFrame = ts;
@@ -362,12 +359,13 @@ function loop(ts) {
 requestAnimationFrame(loop);
 
 document.getElementById("btnPlay").onclick = e => {
+  if (!playing && simTime >= maxSimTime) simTime = 0;
   playing = !playing;
-  e.target.textContent = playing ? "⏸ Pause" : "▶ Play";
+  e.target.textContent = playing ? "⏸ 일시정지" : "▶ 재생";
 };
 document.getElementById("btnStepBack").onclick = () => { simTime = Math.max(0, simTime - 1); render(); };
 document.getElementById("btnStepFwd").onclick = () => { simTime = Math.min(maxSimTime, simTime + 1); render(); };
-document.getElementById("btnSnap").onclick = () => { simTime = Math.min(maxSimTime, 1210); selectedRouteId = null; render(); };
+document.getElementById("btnSnap").onclick = () => { simTime = 0; selectedRouteId = null; render(); };
 document.getElementById("timeSlider").oninput = e => { simTime = parseFloat(e.target.value); render(); };
 const speedSelect = document.getElementById("speedSel");
 const speedCustom = document.getElementById("speedCustom");
@@ -744,11 +742,14 @@ function resourceWaitText(job) {
   if (wait?.reason === "unknown") return "메모리 확인 불가 · 한 개씩 실행";
   return "자원 여유 확인 중";
 }
+const retryButton = document.getElementById("btnRetryStatus");
+const retryResult = document.getElementById("btnRetryResult");
 async function runNative(algorithms=null,research=null) {
   if(runActivity.classList.contains("running"))return;
   if(configSaving||configLoading)return setStatus("설정을 반영하고 있습니다. 잠시 후 실행하세요.");
   if(!location.protocol.startsWith("http"))return setStatus("새 계산은 sim-ui.exe에서 실행하세요.");
   const btn=document.getElementById("btnRunSim"),compare=document.getElementById("btnExperiment"),stop=document.getElementById("btnStopSim");btn.disabled=true;compare.disabled=true;stop.hidden=false;stop.disabled=true;
+  retryResult.hidden = true;
   runActivity.classList.add("running");
   const operation = algorithms ? "비교 실행" : "실행";
   showRunActivity(operation + " 준비 중…");
@@ -764,11 +765,56 @@ async function runNative(algorithms=null,research=null) {
     }
     activeJob=data.runId;
     stop.disabled=false;
+    let missed = 0;
     for(;;){
       await new Promise(resolve=>setTimeout(resolve,500));
-      const job=await fetch(`/api/run/${activeJob}`,{cache:"no-store"}).then(r=>r.json());
+      let job;
+      try {
+        const status = await fetch(`/api/run/${activeJob}`, {cache:"no-store"});
+        if (status.status === 404) { setStatus("실행 기록을 찾을 수 없습니다. 실행 결과 목록을 확인하세요."); break; }
+        if (!status.ok) throw Error();
+        job = await status.json();
+        if (!job.status) throw Error();
+        missed = 0;
+      } catch {
+        showRunActivity("실행 상태 연결 중…");
+        if (++missed >= 3) {
+          showRunActivity("실행 상태를 확인할 수 없습니다.");
+          await new Promise(resolve => {
+            retryButton.hidden = false;
+            retryButton.onclick = resolve;
+          });
+          retryButton.hidden = true;
+          retryButton.onclick = null;
+          missed = 0;
+        }
+        continue;
+      }
       if(job.error&&job.status!=="cancelled")throw Error(job.error);
-      if(job.status==="completed"){stop.disabled=true;showRunActivity("결과 불러오는 중…");if(algorithms){const latest=job.completedRuns.at(-1);const result=await fetch(`/api/result?runId=${encodeURIComponent(latest.runId)}&metadata=1`).then(r=>r.json());await openResultBundle(result.bundle);if(job.statistics)showExperimentStatistics(job.statistics);else document.getElementById("btnCompare").click();setStatus(`비교 실행 완료 · ${job.completedRuns.length}개`);}else{const result=await fetch(`/api/result?runId=${encodeURIComponent(job.runId)}&metadata=1`).then(r=>r.json());await openResultBundle(result.bundle);setStatus(`계산 완료 · ${job.runId}`);}break;}
+      if(job.status==="completed"){
+        stop.disabled=true;
+        const id = algorithms ? job.completedRuns.at(-1).runId : job.runId;
+        const load = async () => {
+          setStatus("결과 불러오는 중…");
+          showRunActivity("결과 불러오는 중…");
+          const response = await fetch("/api/result?runId=" + encodeURIComponent(id) + "&metadata=1", {cache:"no-store"});
+          if (!response.ok) throw Error();
+          await openResultBundle((await response.json()).bundle);
+          if (algorithms) {
+            if(job.statistics) showExperimentStatistics(job.statistics);
+            else document.getElementById("btnCompare").click();
+          }
+          setStatus(algorithms ? `비교 실행 완료 · ${job.completedRuns.length}개` : "계산 완료");
+        };
+        const openCompleted = async () => {
+          retryResult.hidden = true;
+          try { await load(); }
+          catch { setStatus("계산 완료 · 결과를 열 수 없습니다."); retryResult.hidden = false; }
+        };
+        retryResult.onclick = openCompleted;
+        await openCompleted();
+        break;
+      }
       if(job.status==="cancelled"){setStatus("계산을 중지했습니다. 이전 결과를 유지합니다.");break;}
       if(job.status==="failed")throw Error(job.error||"계산 실패");
       if (job.status === "stopping") { showRunActivity("계산을 중지하는 중…"); continue; }
@@ -893,7 +939,7 @@ replayResultButton.onclick = async () => {
   const request = ++resultLoadRequest;
   try {
     setStatus("실행 결과를 불러오는 중…");
-    const response = await fetch("/api/result?metadata=1&runId=" + encodeURIComponent(id), {cache:"no-store"});
+    const response = await fetch("/api/result?runId=" + encodeURIComponent(id) + "&metadata=1", {cache:"no-store"});
     const payload = await response.json();
     if (!response.ok || !payload?.bundle) throw Error(payload?.error || "실행 결과가 없습니다.");
     await openResultBundle(payload.bundle, request);

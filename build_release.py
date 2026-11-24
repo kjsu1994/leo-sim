@@ -26,6 +26,10 @@ def stage(destination, executable):
     for name in ("engine", "settings", "licenses", "testdata", "source-dependencies", "manual"):
         shutil.copytree(ROOT / name, destination / name,
                         ignore=shutil.ignore_patterns("__pycache__", "*.o", "*.obj"))
+    network = destination / "settings/simulations/Network"
+    shutil.copy2(network / "scenarios.defaults", network / "scenarios.ini")
+    for generated in (network / "scenarios").glob("scenario-*.json"):
+        generated.unlink()
     shutil.copy2(executable, destination / "sim-ui.exe")
     (destination / "data").mkdir()
     shutil.copy2(ROOT / "data/earth.png", destination / "data/earth.png")

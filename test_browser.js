@@ -88,16 +88,22 @@ async function retry(fn,attempts=300) { for (let i=0;i<attempts;i++) { try { ret
     assert.equal(await evaluate("!!cfgNameSel.querySelector('option[value=LabelFixture]')"),false);
     await evaluate("byId('showAllConfigs').checked=true;byId('showAllConfigs').onchange()");
     assert.equal(await evaluate("cfgNameSel.querySelector('option[value=LabelFixture]').textContent"),"내 설정 시험");
+    assert.equal(await evaluate("simTime"),0);
+    for(const limit of [0,3,600,1800]) {
+      assert.equal(await evaluate(`syncTimeBounds(${limit});Number(byId('timeSlider').max)`),limit);
+    }
+    assert(await evaluate("syncTimeBounds(600);simTime=600;byId('btnPlay').click();simTime===0 && playing"));
+    await evaluate("byId('btnPlay').click()");
     await evaluate("simTime=300.5;render()");
     assert.equal(await evaluate("stateAt(simTime).t"),300.5);
-    assert.equal(await evaluate("document.getElementById('kpiSat').textContent"),"132 / 264");
+    assert.equal(await evaluate("byId('mapSatellites').textContent"),"132기");
     assert.equal(await evaluate("routes.length"),2671);
     assert(await evaluate("document.querySelector('#routeTable tbody').children.length > 0"));
     await evaluate("byId('showAllConfigs').checked=true;byId('showAllConfigs').onchange();cfgNameSel.value='Dijkstra132Hop';cfgNameSel.onchange()");
     assert.equal(await evaluate("document.getElementById('scenarioRouting').textContent"),"홉 수 최소");
     assert.equal(await evaluate("routes.length"),2671);
     assert.equal(await evaluate("resultMeta.replay"),true);
-    assert(await evaluate("Number(document.getElementById('kpiGsl').textContent) > 0"));
+    assert(await evaluate("parseInt(byId('mapGroundLinks').textContent,10) > 0"));
     assert.equal(await evaluate("resultMeta.config.activeConfig"),"Dijkstra132");
     assert.equal(await evaluate("ORBIT_CFG.metric"),"delay");
     assert(await evaluate("document.getElementById('runStatus').textContent.includes('홉 최소')"));
@@ -147,6 +153,8 @@ async function retry(fn,attempts=300) { for (let i=0;i<attempts;i++) { try { ret
     await evaluate("document.querySelector('.help-popover:popover-open').hidePopover()");
 
     assert.equal(await evaluate("byId('settingsAdvanced').open"),false);
+    assert(await evaluate("byId('settingsAdvanced').contains(byId('edit-controlMtu')) && byId('settingsAdvanced').contains(byId('edit-queueCapacity'))"));
+    assert(await evaluate("byId('edit-randomFailures').value=0;updateMcsrControls();byId('edit-randomStart').disabled"));
     assert(await evaluate("byId('edit-hrJitterMs').disabled && byId('edit-tsDelayBoundMs').disabled"));
     await evaluate("byId('edit-algorithm').value='mcsr-hr';updateMcsrControls()");
     assert(await evaluate("!byId('edit-hrJitterMs').disabled && byId('edit-tsDelayBoundMs').disabled"));
@@ -256,12 +264,24 @@ async function retry(fn,attempts=300) { for (let i=0;i<attempts;i++) { try { ret
     assert(await evaluate("byId('btnReplayResult').disabled && byId('savedRuns').length===0"));
     await evaluate("byId('resultSearch').value='기본 통신';byId('resultSearch').oninput();byId('btnReplayResult').click()");
     await retry(async()=>assert(await evaluate("!byId('resultDialog').open && resultMeta.replay && runStatus.textContent.includes('실행 결과를 불러왔습니다')")));
-    await evaluate("window.runFetch=window.fetch;window.stopRequested=false;window.fetch=async(url,options)=>{if(url==='/api/run')return Response.json({runId:'ui-test'},{status:202});if(url==='/api/run/ui-test/cancel'){window.stopRequested=true;return Response.json({status:'stopping'});}if(url==='/api/run/ui-test')return Response.json(stopRequested?{status:'cancelled'}:{status:'running',progress:{progress:.25,time:15,limit:60,received:7},totalRuns:1});return runFetch(url,options);};byId('btnRunSim').click();byId('btnMapFocus').click()");
+    await evaluate("window.runFetch=window.fetch;window.stopRequested=false;window.fetch=async(url,options)=>{if(url==='/api/run')return Response.json({runId:'ui-test'},{status:202});if(url==='/api/run/ui-test/cancel'){window.stopRequested=true;return Response.json({status:'stopping'});}if(url==='/api/run/ui-test' && (window.pollMisses=(window.pollMisses||0)+1)<=3)throw Error('offline');if(url==='/api/run/ui-test')return Response.json(stopRequested?{status:'cancelled'}:{status:'running',progress:{progress:.25,time:15,limit:60,received:7},totalRuns:1});return runFetch(url,options);};byId('btnRunSim').click();byId('btnMapFocus').click()");
     assert(await evaluate("byId('runActivity').checkVisibility() && byId('runActivity').classList.contains('running') && byId('runActivityText').textContent.includes('준비')"));
+    await retry(async()=>assert(await evaluate("!byId('btnRetryStatus').hidden && activeJob==='ui-test'")));
+    await evaluate("byId('btnRetryStatus').click()");
     await retry(async()=>assert(await evaluate("byId('runProgress').value===.25 && byId('runActivityDetail').textContent.includes('25%')")));
     await evaluate("byId('btnStopSim').click()");
     await retry(async()=>assert(await evaluate("!byId('runActivity').classList.contains('running') && byId('runActivityText').textContent.includes('중지했습니다')")));
     await evaluate("byId('btnMapFocus').click();window.fetch=window.runFetch");
+    await evaluate(`window.submits=0;window.loads=0;window.fetch=async(url,opts)=>{
+      if(url==='/api/run'){submits++;return Response.json({runId:'retry-result'});}
+      if(url==='/api/run/retry-result')return Response.json({status:'completed',runId:'retry-result'});
+      if(String(url).includes('runId=retry-result'))return loads++===0?new Response(null,{status:503}):runFetch('/api/result?metadata=1');
+      return runFetch(url,opts);
+    };byId('btnRunSim').click()`);
+    await retry(async()=>assert(await evaluate("!byId('btnRetryResult').hidden && runStatus.textContent.includes('계산 완료')")));
+    await evaluate("byId('btnRetryResult').click()");
+    await retry(async()=>assert(await evaluate("submits===1 && loads===2 && runStatus.textContent==='계산 완료'")));
+    await evaluate("window.fetch=runFetch");
     console.log("Map focus, 0.00001x playback, result catalog and visible progress/cancel passed");
 
     const offline = path.join(profile, "offline");

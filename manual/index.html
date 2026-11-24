@@ -122,16 +122,16 @@ mark { background:#ffe58f; color:#211800; }
     <section class="sheet" id="overview" aria-labelledby="overview-title">
 <div class="sheet-brand"><p class="kicker">사용자 설명서 · 01</p><img src="assets/Kari_logo.png" alt="한국항공우주연구원" width="2170" height="725"></div><h2 id="overview-title">프로그램과 화면 구성</h2><p class="lead">시험 조건을 정하고 실행한 뒤, 지도와 수신 결과에서 같은 실행을 살펴봅니다.</p>
 <div class="illustrated wide-image">
-<div><table><thead><tr><th scope="col">화면</th><th scope="col">하는 일</th></tr></thead><tbody><tr><th scope="row">상단 재생 도구</th><td>현재 결과의 재생·일시 정지, 시각 이동, 재생 속도 조절과 결과 불러오기</td></tr><tr><th scope="row">왼쪽 지도</th><td>위성 위치, 위성 간 연결(ISL), 지상 연결(GSL) 및 계획 경로 확인</td></tr><tr><th scope="row">오른쪽 새 시뮬레이션</th><td>시험 조건과 알고리즘을 선택하고 새 실행 또는 비교 실행 시작</td></tr><tr><th scope="row">오른쪽 수신 결과</th><td>전달률·수신 지연·처리량, 시간별 그래프와 실행 비교 확인</td></tr></tbody></table>
+<div><table><thead><tr><th scope="col">화면</th><th scope="col">하는 일</th></tr></thead><tbody><tr><th scope="row">상단 재생 도구</th><td>현재 결과의 재생·일시 정지, 시각 이동, 재생 속도 조절과 결과 불러오기</td></tr><tr><th scope="row">왼쪽 지도</th><td>위성 위치, 위성 간 연결(ISL), 지상 연결(GSL) 및 계획 경로 확인</td></tr><tr><th scope="row">오른쪽 시험 설정</th><td>시험 조건과 알고리즘을 선택하고 새 실행 또는 비교 실행 시작</td></tr><tr><th scope="row">오른쪽 수신 결과</th><td>전달률·수신 지연·처리량, 시간별 그래프와 실행 비교 확인</td></tr></tbody></table>
 <aside class="tip">ⓘ 아이콘에 마우스를 올리거나 클릭하면 해당 화면과 설정값의 설명을 볼 수 있습니다.</aside></div>
-<figure><a href="assets/overview.png" target="_blank" rel="noopener" aria-label="그림 1. 지도 재생, 새 시뮬레이션 및 수신 결과가 표시된 기본 화면 · 원본 보기"><img src="assets/overview.png" alt="그림 1. 지도 재생, 새 시뮬레이션 및 수신 결과가 표시된 기본 화면"></a><figcaption>그림 1. 지도 재생, 새 시뮬레이션 및 수신 결과가 표시된 기본 화면</figcaption></figure>
+<figure><a href="assets/overview.png" target="_blank" rel="noopener" aria-label="그림 1. 지도 재생, 시험 설정 및 수신 결과가 표시된 기본 화면 · 원본 보기"><img src="assets/overview.png" alt="그림 1. 지도 재생, 시험 설정 및 수신 결과가 표시된 기본 화면"></a><figcaption>그림 1. 지도 재생, 시험 설정 및 수신 결과가 표시된 기본 화면</figcaption></figure>
 </div>
 <nav class="paging" aria-label="항목 이동"><a href="#cover">← 표지·목차</a><a href="#install">설치와 첫 실행 →</a></nav>
 </section><section class="sheet" id="install" aria-labelledby="install-title">
 <div class="sheet-brand"><p class="kicker">사용자 설명서 · 02</p><img src="assets/Kari_logo.png" alt="한국항공우주연구원" width="2170" height="725"></div><h2 id="install-title">설치와 첫 실행</h2><p class="lead">Windows x64 환경에서 배포 ZIP을 모두 풀고 sim-ui.exe를 실행합니다.</p>
 <h3>실행 전 준비</h3>
 <p>Windows 10 또는 11, Microsoft Edge WebView2 Runtime, Windows UI 호스트에 필요한 .NET Framework를 사용합니다. 설정과 기본 실행 결과는 EXE 폴더에 저장됩니다. 결과 저장 위치만 별도로 지정할 수 있습니다.</p>
-<ol><li>ZIP 전체를 한 폴더에 풉니다. sim-ui.exe는 settings, engine, data와 같은 배포 폴더에서 실행합니다.</li><li>오른쪽 새 시뮬레이션에서 시험 조건을 기본 통신으로, 알고리즘을 Dijkstra · 지연 최소로 선택합니다.</li><li>실행을 누르고 계산 완료를 확인합니다. 지도와 수신 결과가 새 실행으로 전환됩니다.</li><li>시간 슬라이더를 움직이거나 재생을 눌러 지도를 확인합니다. 다시 열 수 있도록 data/runs 안의 실행 ID 폴더를 보관합니다.</li></ol>
+<ol><li>ZIP 전체를 한 폴더에 풉니다. sim-ui.exe는 settings, engine, data와 같은 배포 폴더에서 실행합니다.</li><li>오른쪽 시험 설정에서 시험 조건을 기본 통신으로, 알고리즘을 Dijkstra · 지연 최소로 선택합니다.</li><li>실행을 누르고 계산 완료를 확인합니다. 지도와 수신 결과가 새 실행으로 전환됩니다.</li><li>시간 슬라이더를 움직이거나 재생을 눌러 지도를 확인합니다. 다시 열 수 있도록 data/runs 안의 실행 ID 폴더를 보관합니다.</li></ol>
 <table><thead><tr><th scope="col">여는 파일</th><th scope="col">사용 범위</th></tr></thead><tbody><tr><th scope="row">sim-ui.exe</th><td>조건 수정, 새 실행, 비교 실행, 결과 열기 및 지도 재생</td></tr><tr><th scope="row">index.html</th><td>직접 열면 저장된 결과를 재생합니다. 계산 및 INI 수정은 EXE에서 진행합니다.</td></tr></tbody></table>
 <aside class="tip">EXE에는 Python 실행 환경이 포함됩니다. OMNeT++, INET, WSL, Docker 또는 원본 프로젝트를 준비할 필요가 없습니다.</aside><nav class="paging" aria-label="항목 이동"><a href="#overview">← 프로그램과 화면 구성</a><a href="#scenarios">시험 조건과 알고리즘 선택 →</a></nav>
 </section><section class="sheet" id="scenarios" aria-labelledby="scenarios-title">
@@ -153,7 +153,7 @@ mark { background:#ffe58f; color:#211800; }
 <div class="illustrated">
 <div><p>시간 가정을 선택하면 DS·CSIB 설정이 화면에서 사라지며, INI에 저장하면 CSIB가 꺼집니다. DS·CSIB를 시험하려면 실제 패킷을 선택하세요.</p>
 
-<ol><li>시험 조건을 선택한 뒤 조건 수정을 누릅니다.</li><li>기본 설정, 트래픽, 링크 및 장애·환경 조건을 확인합니다. 항목 옆 ⓘ에서 단위와 변경 효과를 읽을 수 있습니다.</li><li>제공 설정을 다시 불러오려면 기본값을 누릅니다. 적용하려면 INI에 저장, 이번 편집을 버리려면 취소를 누릅니다.</li></ol>
+<ol><li>시험 조건을 선택한 뒤 조건 수정을 누릅니다.</li><li>기본 설정과 송신 조건을 확인합니다. 링크·큐, MCSR, DS·CSIB는 고급 설정에서 변경합니다. 항목 옆 ⓘ에서 단위와 변경 효과를 읽을 수 있습니다.</li><li>제공 설정을 다시 불러오려면 기본값을 누릅니다. 적용하려면 INI에 저장, 이번 편집을 버리려면 취소를 누릅니다.</li></ol>
 <p>기본값은 선택한 구성의 제공 섹션을 기준으로 하며 상속값은 현재 상위 설정을 따릅니다. 직접 추가한 구성은 제공 기본값이 없으므로 값을 직접 편집합니다.</p></div>
 <figure><a href="assets/conditions.png" target="_blank" rel="noopener" aria-label="그림 3. 조건 수정과 기본값 미리 보기 · 원본 보기"><img src="assets/conditions.png" alt="그림 3. 조건 수정과 기본값 미리 보기"></a><figcaption>그림 3. 조건 수정과 기본값 미리 보기</figcaption></figure>
 </div>
@@ -166,7 +166,7 @@ mark { background:#ffe58f; color:#211800; }
 </tbody></table><nav class="paging" aria-label="항목 이동"><a href="#algorithms">← 알고리즘과 비교 목적</a><a href="#ini">INI와 외부 일정 편집 →</a></nav>
 </section><section class="sheet" id="ini" aria-labelledby="ini-title">
 <div class="sheet-brand"><p class="kicker">사용자 설명서 · 06</p><img src="assets/Kari_logo.png" alt="한국항공우주연구원" width="2170" height="725"></div><h2 id="ini-title">INI와 외부 일정 편집</h2><p>설정 파일·저장 위치의 실행 결과 저장 폴더에서 현재 위치를 확인할 수 있습니다. 폴더 선택이나 기본 위치로 변경한 뒤 앱을 다시 엽니다.</p><p class="lead">자주 쓰는 값은 조건 수정에서, INI 원문은 설정 파일·저장 위치의 INI 파일 열기에서 확인합니다.</p>
-<ol><li>새 시뮬레이션에서 설정 파일·저장 위치를 펼치고 INI 파일 열기를 누릅니다.</li><li>프로그램 폴더의 <code>settings/simulations/Network/scenarios.ini</code>를 UTF-8로 저장합니다.</li><li>프로그램에서 <strong>설정 새로고침</strong>을 누릅니다. 새 시험은 <a href="#add-trial">INI로 시험 추가</a>를 참고하세요.</li></ol>
+<ol><li>시험 설정에서 설정 파일·저장 위치를 펼치고 INI 파일 열기를 누릅니다.</li><li>프로그램 폴더의 <code>settings/simulations/Network/scenarios.ini</code>를 UTF-8로 저장합니다.</li><li>프로그램에서 <strong>설정 새로고침</strong>을 누릅니다. 새 시험은 <a href="#add-trial">INI로 시험 추가</a>를 참고하세요.</li></ol>
 <table><thead><tr><th scope="col">내용</th><th scope="col">형식 또는 위치</th></tr></thead><tbody><tr><th scope="row">링크 직접 장애</th><td>12-13@60+30 → 위성 12와 13 사이 링크를 60초에 30초간 끊음</td></tr><tr><th scope="row">기준 경로 장애</th><td>route@60+30 → 기준 경로의 위성 간 링크를 60초에 30초간 끊음</td></tr><tr><th scope="row">계획된 ISL 개폐</th><td>time,event,satA,satB 열이 있는 CSV. event에는 failure 또는 restore를 사용하며 시간 단위는 초</td></tr><tr><th scope="row">지역 혼잡</th><td>환경 조건에서 링크, 위성, 궤도면, 지도 구역 등을 지정해 용량·버퍼·지연·지터·손실을 설정</td></tr></tbody></table>
 <p>외부 일정은 INI에 경로를 지정합니다. 기존 시나리오의 개폐 일정이나 장애 기록이 적용되는 경우 조건 수정 화면 상단에 표시됩니다. 상대 경로는 진입 INI의 위치를 기준으로 해석합니다. 개폐 일정은 고정 격자에 있는 링크를 사용합니다. 기존 구성 형식과 지원 키는 README.md의 시나리오 설정 항목에서 확인할 수 있습니다.</p><nav class="paging" aria-label="항목 이동"><a href="#settings">← 조건 수정과 기본값</a><a href="#add-trial">INI로 시험 추가 →</a></nav>
 </section><section class="sheet" id="add-trial" aria-labelledby="add-trial-title">
@@ -175,7 +175,7 @@ mark { background:#ffe58f; color:#211800; }
 <div class="illustrated ini-walkthrough">
 <div>
 <h3>1. 설정 파일 열기</h3>
-<p>새 시뮬레이션에서 <strong>설정 파일·저장 위치 → INI 파일 열기</strong>를 누릅니다. 메모장에서 <code>scenarios.ini</code>가 열립니다.</p>
+<p>시험 설정에서 <strong>설정 파일·저장 위치 → INI 파일 열기</strong>를 누릅니다. 메모장에서 <code>scenarios.ini</code>가 열립니다.</p>
 <figure><a href="assets/ini-edit.png" target="_blank" rel="noopener"><img src="assets/ini-edit.png" alt="설정 파일 아래의 INI 파일 열기와 설정 새로고침 버튼"></a><figcaption>INI를 열고 저장 후 설정 새로고침을 누르는 위치</figcaption></figure>
 <h3>2. 파일 맨 아래에 시험 추가</h3>
 <p>아래 예시를 붙여 넣습니다. 이름이 이미 쓰였다면 <code>MyLinkTest</code>를 바꿉니다. <code>Ctrl+S</code>로 같은 파일에 UTF-8 형식으로 저장합니다.</p>
@@ -215,9 +215,9 @@ sim-time-limit = 100s
 <nav class="paging" aria-label="항목 이동"><a href="#ini">← INI와 외부 일정 편집</a><a href="#playback">지도 재생과 결과 열기 →</a></nav>
 </section>
 <section class="sheet" id="playback" aria-labelledby="playback-title">
-<div class="sheet-brand"><p class="kicker">사용자 설명서 · 07</p><img src="assets/Kari_logo.png" alt="한국항공우주연구원" width="2170" height="725"></div><h2 id="playback-title">지도 재생과 결과 열기</h2><p class="lead">현재 재생 중인 지도와 새 시뮬레이션 설정은 화면의 상태 표시에서 구분합니다.</p>
+<div class="sheet-brand"><p class="kicker">사용자 설명서 · 07</p><img src="assets/Kari_logo.png" alt="한국항공우주연구원" width="2170" height="725"></div><h2 id="playback-title">지도 재생과 결과 열기</h2><p class="lead">현재 재생 중인 지도와 시험 설정 설정은 화면의 상태 표시에서 구분합니다.</p>
 <table><thead><tr><th scope="col">열기 방식</th><th scope="col">표시되는 내용</th></tr></thead><tbody><tr><th scope="row">실행 결과 열기</th><td>EXE의 보관 목록에서 시험 조건·알고리즘·실행 ID를 검색합니다. 외부 결과는 외부 폴더 열기를 사용합니다. 보관된 설정과 사건으로 위성 위치·링크·경로를 재생하며, 저장된 수신 통계를 표시합니다.</td></tr></tbody></table>
-<ol><li>외부 폴더를 열거나 HTML로 직접 열었을 때는 manifest.json이 들어 있는 data/runs/&lt;실행 ID&gt; 폴더를 선택합니다.</li><li>슬라이더 또는 −1s / +1s로 관찰 시각을 이동하고, 재생 속도를 바꿔 움직임을 확인합니다. 배율의 직접 입력에서 0.00001~60배를 지정할 수 있습니다. 지도 크게 보기로 지도 영역을 넓히고 패널 열기로 오른쪽을 복원합니다. 넓은 창에서는 지도와 패널 경계를 끌어 패널 너비를 조절할 수 있습니다. 지도에서 휠로 가리킨 곳을 확대·축소하고, 확대한 지도는 마우스로 끌어 이동합니다.</li><li>지도에서 위성·지상 노드에 마우스를 올려 정보를 읽습니다. ISLs, GSLs, Coverage, Active Routes, Labels 체크박스로 표시 항목을 조절합니다.</li><li>한 줄에 나란히 있는 출발지·목적지 필터로 관심 경로를 찾고 Recent Planned Routes 표에서 계획 경로를 확인합니다.</li></ol>
+<ol><li>외부 폴더를 열거나 HTML로 직접 열었을 때는 manifest.json이 들어 있는 data/runs/&lt;실행 ID&gt; 폴더를 선택합니다.</li><li>결과는 0초에서 열립니다. 종료 후 재생을 누르면 처음부터 다시 시작합니다. 슬라이더 또는 −1s / +1s로 관찰 시각을 이동하고, 재생 속도를 바꿔 움직임을 확인합니다. 배율의 직접 입력에서 0.00001~60배를 지정할 수 있습니다. 지도 크게 보기로 지도 영역을 넓히고 패널 열기로 오른쪽을 복원합니다. 넓은 창에서는 지도와 패널 경계를 끌어 패널 너비를 조절할 수 있습니다. 지도에서 휠로 가리킨 곳을 확대·축소하고, 확대한 지도는 마우스로 끌어 이동합니다.</li><li>지도에서 위성·지상 노드에 마우스를 올려 정보를 읽습니다. ISLs, GSLs, Coverage, Active Routes, Labels 체크박스로 표시 항목을 조절합니다.</li><li>한 줄에 나란히 있는 출발지·목적지 필터로 관심 경로를 찾고 최근 계획 경로 표에서 계획 경로를 확인합니다.</li></ol>
 <aside class="tip">CSV의 경로 번호와 위성 ID만으로는 위성의 좌표, 지상 노드의 이동, 전체 ISL·GSL, 수신 패킷 통계를 재구성할 수 없습니다. 전체 재생에는 실행 결과 폴더가 필요합니다.</aside><nav class="paging" aria-label="항목 이동"><a href="#add-trial">← INI로 시험 추가</a><a href="#metrics">수신 결과와 복구 지표 읽기 →</a></nav>
 </section><section class="sheet" id="metrics" aria-labelledby="metrics-title">
 <div class="sheet-brand"><p class="kicker">사용자 설명서 · 08</p><img src="assets/Kari_logo.png" alt="한국항공우주연구원" width="2170" height="725"></div><h2 id="metrics-title">수신 결과와 복구 지표 읽기</h2><p class="lead">지도와 경로 표는 계획 경로를, 수신 결과는 패킷이 실제로 처리된 시뮬레이션 결과를 보여줍니다.</p>

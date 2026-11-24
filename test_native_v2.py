@@ -170,7 +170,8 @@ class JobV2Tests(unittest.TestCase):
             while run_manager.state(identifier)['status'] in ('queued','running'):
                 self.assertLess(time.monotonic(),deadline);time.sleep(.05)
             state=run_manager.state(identifier);self.assertEqual(state['status'],'completed',state.get('error'))
-            bundle=state['result']['bundle'];self.assertEqual(bundle['manifest']['format'],'leo-native-replay-v4')
+            self.assertNotIn('result',state)
+            bundle=json.loads((base/'data/runs'/identifier/'result.json').read_text(encoding='utf8'))['bundle'];self.assertEqual(bundle['manifest']['format'],'leo-native-replay-v4')
             self.assertEqual(bundle['files']['config/simulations/Network/scenarios.ini'].encode(),before)
             for name,digest in bundle['manifest']['files'].items():self.assertEqual(hashlib.sha256(bundle['files'][name].encode()).hexdigest(),digest)
             self.assertTrue(compare_bundles(bundle,bundle)['comparable'])

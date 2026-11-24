@@ -151,7 +151,8 @@ function updateMcsrControls(){
     reserveDelay:mcsr&&assumed,repairDelay:mcsr&&assumed,spfDelay:!mcsr&&assumed,floodHopDelay:assumed||!packet,
     failureKnowledge:!packet,failureScopeHops:!packet&&value("edit-failureKnowledge")==="propagate",
     routingQueueCapacity:mcsr&&!packet&&Number(value("edit-queueCapacity"))===0,
-    controlRefresh:packet,controlTimeout:packet,controlHeaderBytes:packet,controlRecordBytes:packet,controlMtu:packet,controlReassemblyTimeout:packet,controlResyncInterval:packet,
+    randomStart:Number(value("edit-randomFailures"))>0,randomEnd:Number(value("edit-randomFailures"))>0,randomDuration:Number(value("edit-randomFailures"))>0,
+    controlRefresh:packet,controlTimeout:csib,controlHeaderBytes:packet,controlRecordBytes:packet,controlMtu:packet,controlReassemblyTimeout:packet,controlResyncInterval:packet,
     congestionRefresh:environment,congestionBuffer:environment,congestionPacketBytes:environment,congestionZones:environment,congestionAware:environment&&!mcsr
   };
   for(const [key,enabled]of Object.entries(conditions)){const input=byId("edit-"+key);if(input)input.closest("label").hidden=!enabled;}
@@ -180,7 +181,7 @@ function openSettings(cfg,resetDefaults=false){
   const [models,mg]=group("모델 검증");container.append(models);
   for(const [key,label,choices]of [["processingMode","처리 지연",{neutral:"추가 지연 없음",assumed:"가정값 적용"}],["controlMode","제어 통신",{packet:"실제 패킷",time:"시간 가정"}],["jitterModel","지터",{packet:"실제 지연 변동",cost:"라우팅 비용 주입"}]])mg.append(control(label,"edit-"+key,cfg[key]||Object.keys(choices)[0],"select",choices));
   for(const [key,label]of [["controlRefresh","제어 갱신 (s)"],["controlTimeout","수집 제한 시간 (s)"],["controlHeaderBytes","제어 헤더 (B)"],["controlRecordBytes","상태 레코드 (B)"],["controlMtu","제어 MTU (B)"],["controlReassemblyTimeout","재조립 제한 (s)"],["controlResyncInterval","재동기화 주기 (s)"]])mg.append(control(label,"edit-"+key,cfg[key],"number",{min:key==="controlMtu"?64:key.endsWith("Bytes")?1:1e-11,step:key.endsWith("Bytes")||key==="controlMtu"?1:"any"}));
-  const [traffic,tf]=group("트래픽",true);container.append(traffic);
+  const [traffic,tf]=group("송신 조건");container.append(traffic);
   const enabled=cfg.stations.filter(s=>s.enabled);const first=enabled[0]||cfg.stations[0];
   const senderWrap=node("details",{class:"sender-list"});senderWrap.append(node("summary",{},`송신 노드 (${enabled.length}개 선택)`));
   const search=node("input",{type:"search",placeholder:"노드 검색",'aria-label':"송신 노드 검색"});senderWrap.append(search);
@@ -239,9 +240,9 @@ function openSettings(cfg,resetDefaults=false){
   move(["slsInterval","slsMissCount","controlRefresh","controlTimeout","controlHeaderBytes","controlRecordBytes","controlMtu","controlReassemblyTimeout","controlResyncInterval","csibPeriod","csibMonitorInterval","csibMessageBytes"],pg);
   move(["reserveDelay","repairDelay","spfDelay","floodHopDelay","failureKnowledge","failureScopeHops","csibComputeDelay","csibReportProcDelay","csibHopProcDelay"],mg);
   byId("edit-floodModel").closest("label").dataset.mcsr="1";
-  ag.append(models,recording);
+  ag.append(links,mcsr,csib,models,recording);
   container.insertBefore(node("p",{id:"settingsModelStatus",class:"model-status",role:"status",hidden:true}),basic);
-  for(const key of ["algorithm","processingMode","controlMode","jitterModel","csibEnabled","failureKnowledge","queueCapacity"])byId("edit-"+key).addEventListener("change",updateMcsrControls);
+  for(const key of ["algorithm","processingMode","controlMode","jitterModel","csibEnabled","failureKnowledge","queueCapacity","randomFailures"])byId("edit-"+key).addEventListener("change",updateMcsrControls);
   updateMcsrControls();attachSettingHelp(container);if(!byId("settingsDialog").open)byId("settingsDialog").showModal();
 }
 const cities={"서울":[37.5665,126.978],"도쿄":[35.6762,139.6503],"베이징":[39.9042,116.4074],"싱가포르":[1.3521,103.8198],"시드니":[-33.8688,151.2093],"뭄바이":[19.076,72.8777],"두바이":[25.2048,55.2708],"모스크바":[55.7558,37.6173],"런던":[51.5074,-.1278],"파리":[48.8566,2.3522],"프랑크푸르트":[50.1109,8.6821],"카이로":[30.0444,31.2357],"라고스":[6.5244,3.3792],"요하네스버그":[-26.2041,28.0473],"뉴욕":[40.7128,-74.006],"로스앤젤레스":[34.0522,-118.2437],"멕시코시티":[19.4326,-99.1332],"상파울루":[-23.5505,-46.6333],"부에노스아이레스":[-34.6037,-58.3816],"산티아고":[-33.4489,-70.6693]};

@@ -42,7 +42,7 @@ button:disabled { opacity: 0.5; cursor: wait; }
 .runner-actions { display: flex; gap: 6px; }
 .runner-actions button { flex: 1; font-size: 14px; padding: 8px 10px; }
 .run-status { margin-top: 7px; font-size: 13px; padding: 7px 9px; border-radius: 4px; background: #0d1b30; color: #7fe8ff; white-space: pre-wrap; max-height: 90px; overflow-y: auto; }
-.kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.kpis { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
 .kpis small { display: block; font-size: 12.5px; color: #8da2c0; }
 .kpis strong { font-size: 16px; color: #fff; }
 .toggles { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 13px; }
@@ -137,6 +137,7 @@ body:not(:has(#sidePanel[hidden])) .run-activity:not(.running) { display: none; 
 body:has(#sidePanel[hidden]) .map-metrics > div:first-child { display: none; }
 
 .controls { flex-wrap: wrap; max-width: none; min-width: 0; }
+.playback-controls { display: flex; align-items: center; flex: 1 1 340px; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .transport, .playhead, .result-tools { display: inline-flex; align-items: center; gap: 6px; }
 .playhead { flex: 1 1 160px; min-width: min(100%, 150px); }
 .playhead #timeSlider { min-width: 45px; width: 0; }
