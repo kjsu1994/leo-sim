@@ -199,5 +199,5 @@ function applyNetworkTimeline(snapshot,events,runId,time) {
     if(e.event==="csib-applied")c.knowledge.set(e.node,e);
   }
   c.time=time;snapshot.links=snapshot.links.filter(([a,b,kind])=>kind>=2||!c.down.has([Math.min(a,b),Math.max(a,b)].join(":")));
-  snapshot.linkEffects=c.effects;snapshot.knowledge=c.knowledge;return snapshot;
+  snapshot.downLinks=c.down;snapshot.linkEffects=c.effects;snapshot.knowledge=c.knowledge;return snapshot;
 }

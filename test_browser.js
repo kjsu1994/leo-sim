@@ -195,6 +195,12 @@ async function retry(fn,attempts=300) { for (let i=0;i<attempts;i++) { try { ret
     const nativeFolder=path.join(profile,'native');fs.mkdirSync(nativeFolder);
     const script="import sys,pathlib,shutil,json; import server,run_manager; b=pathlib.Path(sys.argv[1]); (b/'engine').mkdir();shutil.copy2(pathlib.Path(server.BASE_DIR)/'engine/engine.exe',b/'engine/engine.exe');shutil.copy2(pathlib.Path(server.BASE_DIR)/'replay-model.json',b/'replay-model.json');c=server.read_ini_config('Mcsr132');c['simTimeLimit']=2;[s.update(startTime=0) for s in c['stations']];inputs={p.relative_to(server.LEO_DIR).as_posix():p.read_bytes() for p in pathlib.Path(server.LEO_DIR).rglob('*.ini')};r=run_manager.execute(b,server.LEO_DIR,server.INI_PATH,'Mcsr132',server.read_ini_config,frozen=(c,inputs));(b/'browser-result.json').write_text(json.dumps(r),encoding='utf-8')";
     const run=require('node:child_process').spawnSync('python',['-c',script,nativeFolder],{cwd:__dirname,windowsHide:true,encoding:'utf8',timeout:30000});assert.equal(run.status,0,run.stderr);
+    assert(await evaluate(`(()=>{
+      const rows=[[2,0,11,13,10,0,0,60],[3,0,11,50,4,0,0,70],[3,1,11,10,6,0,0,50],[3.5,0,11,2,0,0,0,0]];
+      const inbound=stationWindow(rows,11,3,3.5), previous=stationWindow(rows,11,2.99,3.5), last=stationWindow(rows,11,3.5,3.5);
+      return inbound.delay===58 && inbound.received===10 && inbound.sources.length===2 && previous.delay===60 && previous.start===1 &&
+        stationWindow(rows,0,3,3.5).sent===50 && stationWindow(rows,11,.99,3.5)===null && last.delay===null && last.start===3;
+    })()`));
     const nativeResult=JSON.parse(fs.readFileSync(path.join(nativeFolder,'browser-result.json'),'utf8'));
     assert.equal(nativeResult.bundle.manifest.displayName, "고부하 통신 · 12번 노드 고정");
     await evaluate(`openResultBundle(${JSON.stringify(nativeResult.bundle)})`);

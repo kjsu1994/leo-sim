@@ -38,6 +38,7 @@ function installResult(result) {
 let simTime = 0;
 let maxSimTime = 0;
 let playing = false, speed = 10, selectedRouteId = null, lastFrame = 0;
+let hoverPoint = null, displayedSnapshot = null, displayedRoute = null;
 let lastSatStates = [], lastStationStates = [];
 
 const cfgNameSel = document.getElementById("cfgName");
@@ -201,6 +202,7 @@ function render() {
     return { ...st, lat: p[0], lon: p[1], alt: p[2] };
   }) : [];
   const terminalStates = snapshot ? snapshot.nodes.slice(snapshot.numSats + snapshot.numStations).map((p, id) => ({ id, lat: p[0], lon: p[1], alt: p[2] })) : [];
+  displayedSnapshot = snapshot;
   lastSatStates = sats; lastStationStates = stStates;
   if(typeof drawScenarioOverlay === "function")drawScenarioOverlay(snapshot,mapTime);
   const gslLinks = [], gslSatSet = new Set();
@@ -224,6 +226,7 @@ function render() {
   const maxRoutes = Math.max(0, ORBIT_CFG.maxRoutes);
   const endIdx = upperBoundTime(simTime);
   const windowRoutes = recentRoutes(routes, simTime, 40);
+  displayedRoute = selectedRouteId == null ? null : windowRoutes.find(row => row[1] === selectedRouteId);
   const drawnRoutes = windowRoutes.slice(0, maxRoutes).reverse();
   const activeSatSet = new Set();
 
@@ -344,6 +347,7 @@ function render() {
       <td class="path-cell" title="${path.join("-")}">${path.join("-")}</td>
     </tr>`;
   }).join("") || '<tr><td colspan="5">이 시간대에 기록된 경로가 없습니다.</td></tr>';
+  if (hoverPoint) updateNodeTooltip(hoverPoint);
 }
 
 function loop(ts) {
@@ -446,7 +450,7 @@ new ResizeObserver(describePanelWidth).observe(sidePanel);
 
 document.querySelector("#routeTable tbody").onclick = e => {
   const tr = e.target.closest("tr");
-  if (!tr) return;
+  if (!tr?.dataset.id) return;
   selectedRouteId = parseInt(tr.dataset.id, 10);
   simTime = parseFloat(tr.dataset.t);
   render();
@@ -454,37 +458,80 @@ document.querySelector("#routeTable tbody").onclick = e => {
 
 // Hover Tooltip on Map (accounts for object-fit: contain letterboxing)
 const tooltip = document.getElementById("tooltip");
-canvas.onmousemove = e => {
-  const point = mapPoint(e);
-  if (!point?.inside || mapDrag) return (tooltip.hidden = true);
-  const {worldX:mx,worldY:my} = point;
-  let hit = null;
-  for (const st of lastStationStates) {
-    if (Math.hypot(lonToX(st.lon) - mx, latToY(st.lat) - my) < 14 / mapZoom) {
-      hit = `${st.mobile ? "Mobile Terminal" : "Ground Station"} #${st.id}\n${st.name}\nLat: ${st.lat.toFixed(2)}°, Lon: ${st.lon.toFixed(2)}°`;
-      break;
-    }
+function stationWindow(series, id, t, limit) {
+  // The engine samples at whole seconds and closes the last partial window at the run limit.
+  const end = t >= limit ? limit : Math.floor(t);
+  if (!(end > 0)) return null;
+  let lo = 0, hi = series.length;
+  while (lo < hi) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    if (series[mid][0] < end) lo = mid + 1; else hi = mid;
   }
-  if (!hit) {
-    for (const s of lastSatStates) {
-      if (Math.hypot(lonToX(s.lon) - mx, latToY(s.lat) - my) < 10 / mapZoom) {
-        hit = `Satellite sat[${s.idx}] (engine snapshot)\nLat: ${s.lat.toFixed(2)}°, Lon: ${s.lon.toFixed(2)}°, Alt: ${s.alt.toFixed(0)}km`;
-        break;
+  let sent = 0, received = 0, delay = 0;
+  const sources = [];
+  for (let i = lo; i < series.length && series[i][0] === end; i++) {
+    const [, src, dst, tx, rx, , , ms] = series[i];
+    if (src === id) sent += tx;
+    if (dst === id && rx) { received += rx; delay += rx * ms; sources.push(src); }
+  }
+  return {start:Math.ceil(end)-1,end,sent,received,delay:received ? delay/received : null,sources};
+}
+function updateNodeTooltip(e) {
+  const point = mapPoint(e);
+  if (!point?.inside || mapDrag) { tooltip.hidden = true; return; }
+  const near = (node,radius) => Math.hypot(lonToX(node.lon)-point.worldX,latToY(node.lat)-point.worldY) < radius/mapZoom;
+  const station = lastStationStates.find(st => near(st,14));
+  const sat = station ? null : lastSatStates.find(s => near(s,10));
+  if (!station && !sat) { tooltip.hidden = true; return; }
+  const node = station || sat;
+  const lines = [station ? (station.mobile ? "이동 노드 " : "지상국 ") + station.id + " · " + station.name : "위성 " + sat.idx];
+  if (station) {
+    const cfg = (resultMeta?.config || previewConfig)?.stations?.find(st => st.id === station.id);
+    if (cfg?.enabled) {
+      const dest = cfg.dstStation >= 0 ? "노드 "+cfg.dstStation : cfg.dstType === "mobile" ? "이동 노드 중 선택" : "대상 노드 중 선택";
+      lines.push("송신 설정 · "+dest, cfg.packetSize+" B · "+cfg.sendInterval+"초 간격");
+    }
+    if (resultMeta?.summary && Array.isArray(resultMeta.series)) {
+      const w = stationWindow(resultMeta.series,station.id,simTime,resultMeta.config.simTimeLimit);
+      if (!w) lines.push("첫 집계 전");
+      else {
+        lines.push(w.start+"–"+w.end+"초 · 송신 "+w.sent+"개 / 수신 "+w.received+"개");
+        if (w.sources.length) lines.push("출발지 "+(w.sources.length===1 ? "노드 "+w.sources[0] : w.sources.length+"곳"));
+        lines.push("종단 간 평균 지연 "+(w.delay === null ? "—" : w.delay.toFixed(2)+" ms"));
       }
     }
-  }
-  if (hit && resultMeta?.networkEvents?.length) {const state=stateAt(simTime);for(const s of lastSatStates)if(Math.hypot(lonToX(s.lon)-mx,latToY(s.lat)-my)<10/mapZoom){const info=state.knowledge?.get(s.idx);if(info)hit+=`\nCSIB v${info.version} · 정보 시각 ${info.dataTime.toFixed(3)}s`;break;}}
-  if (hit) {
-    const wrap = canvas.parentElement.getBoundingClientRect();
-    tooltip.hidden = false;
-    tooltip.textContent = hit;
-    tooltip.style.left = `${Math.min(wrap.width - 210, e.clientX - wrap.left + 12)}px`;
-    tooltip.style.top = `${Math.min(wrap.height - 70, e.clientY - wrap.top + 12)}px`;
   } else {
-    tooltip.hidden = true;
+    let isl=0,ground=0;
+    for (const [a,b,kind] of displayedSnapshot.links) {
+      if (a!==sat.idx && b!==sat.idx) continue;
+      if (kind<2) isl++; else ground++;
+    }
+    lines.push("위성 간 연결 "+isl+"개 · 지상 연결 "+ground+"개");
+    const failed=[];
+    for (const key of displayedSnapshot.downLinks || []) {
+      const [a,b]=key.split(":").map(Number);
+      if (a===sat.idx || b===sat.idx) failed.push(a===sat.idx ? b : a);
+    }
+    if (failed.length) lines.push("단절 상대 위성 "+failed.slice(0,4).join(", ")+(failed.length>4?" 외 "+(failed.length-4)+"기":""));
+    const path=displayedRoute?.[6], index=path?.indexOf(sat.idx) ?? -1;
+    if (index>=0) {
+      const prev=index ? "위성 "+path[index-1] : "출발 "+displayedRoute[2];
+      const next=index+1<path.length ? "위성 "+path[index+1] : "도착 "+displayedRoute[3];
+      lines.push("선택 경로 · "+prev+" → 현재 → "+next);
+    }
+    const info=displayedSnapshot.knowledge?.get(sat.idx);
+    if(info) lines.push("CSIB v"+info.version+" · "+info.dataTime.toFixed(3)+"초");
   }
-};
-canvas.onmouseleave = () => { tooltip.hidden = true; };
+  lines.push("위도 "+node.lat.toFixed(2)+"° · 경도 "+node.lon.toFixed(2)+"°"+(sat?" · "+sat.alt.toFixed(0)+" km":""));
+  tooltip.textContent=lines.join("\n");
+  tooltip.hidden=false;
+  const wrap=tooltip.parentElement.getBoundingClientRect();
+  const x=e.clientX-wrap.left,y=e.clientY-wrap.top;
+  tooltip.style.left=Math.max(0,x+12+tooltip.offsetWidth<=wrap.width?x+12:x-tooltip.offsetWidth-12)+"px";
+  tooltip.style.top=Math.max(0,y+12+tooltip.offsetHeight<=wrap.height?y+12:y-tooltip.offsetHeight-12)+"px";
+}
+canvas.onmousemove = e => { hoverPoint={clientX:e.clientX,clientY:e.clientY}; updateNodeTooltip(hoverPoint); };
+canvas.onmouseleave = () => { hoverPoint=null; tooltip.hidden = true; };
 
 canvas.addEventListener("wheel", event => {
   const point = mapPoint(event);

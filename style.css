@@ -27,7 +27,8 @@ button:disabled { opacity: 0.5; cursor: wait; }
 @media (max-width: 1280px) { .sidebar { width: 360px; } }
 @media (max-width: 760px) { body { overflow: auto; height: auto; min-height: 100vh; } .layout { flex-direction: column; } .map-wrap { flex: none; height: 65vh; min-height: 390px; } .sidebar { width: 100%; overflow: visible; border-left: 0; border-top: 1px solid #223759; } .brand { flex-wrap: wrap; white-space: normal; } }
 #mapCanvas { width: 100%; height: 100%; object-fit: contain; cursor: crosshair; }
-.tooltip { position: absolute; pointer-events: none; background: rgba(8, 16, 32, 0.92); border: 1px solid #40c4ff; padding: 8px 11px; border-radius: 4px; font-size: 13.5px; line-height: 1.45; white-space: pre; z-index: 10; }
+.tooltip { position: absolute; pointer-events: none; background: rgba(8, 16, 32, 0.92); border: 1px solid #40c4ff; padding: 8px 11px; border-radius: 4px; font-size: 13.5px; line-height: 1.45; white-space: pre-line; overflow-wrap: anywhere; max-width: min(310px,100%); box-sizing: border-box; z-index: 10; }
+.tooltip::first-line { color: #9de4ff; font-weight: 700; }
 .sidebar { width: 470px; background: #0d1b30; border-left: 1px solid #223759; display: flex; flex-direction: column; gap: 9px; padding: 10px; overflow-y: auto; }
 .card { background: #132542; border: 1px solid #223a61; border-radius: 6px; padding: 10px 12px; }
 .runner-head { display: flex; justify-content: space-between; align-items: center; font-size: 14.5px; font-weight: 600; color: #9ec3ff; margin-bottom: 8px; }
