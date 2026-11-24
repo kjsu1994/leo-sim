@@ -80,7 +80,7 @@ async function retry(fn,attempts=300) { for (let i=0;i<attempts;i++) { try { ret
     console.log("Scenario UI passed: concise conditions, details collapsed by default, file actions available");
     assert.equal(await evaluate("document.getElementById('cfgName').disabled"),false);
     assert(await evaluate("document.getElementById('runnerActions').checkVisibility() && !document.getElementById('btnOpenIni').checkVisibility()"));
-    assert.equal(await evaluate("cfgNameSel.selectedOptions[0].textContent"),"기본 통신");
+    assert.equal(await evaluate("cfgNameSel.selectedOptions[0].textContent"),"기본 통신 · 이동 노드 대상");
     assert.equal(await evaluate("scenarioName('PaperS1MyCustom')"),"PaperS1MyCustom");
     assert.equal(await evaluate("byId('algorithmChoice').value"),"dijkstra-delay");
     assert(await evaluate("cfgNameSel.options.length<12"));
@@ -196,7 +196,7 @@ async function retry(fn,attempts=300) { for (let i=0;i<attempts;i++) { try { ret
     const script="import sys,pathlib,shutil,json; import server,run_manager; b=pathlib.Path(sys.argv[1]); (b/'engine').mkdir();shutil.copy2(pathlib.Path(server.BASE_DIR)/'engine/engine.exe',b/'engine/engine.exe');shutil.copy2(pathlib.Path(server.BASE_DIR)/'replay-model.json',b/'replay-model.json');c=server.read_ini_config('Mcsr132');c['simTimeLimit']=2;[s.update(startTime=0) for s in c['stations']];inputs={p.relative_to(server.LEO_DIR).as_posix():p.read_bytes() for p in pathlib.Path(server.LEO_DIR).rglob('*.ini')};r=run_manager.execute(b,server.LEO_DIR,server.INI_PATH,'Mcsr132',server.read_ini_config,frozen=(c,inputs));(b/'browser-result.json').write_text(json.dumps(r),encoding='utf-8')";
     const run=require('node:child_process').spawnSync('python',['-c',script,nativeFolder],{cwd:__dirname,windowsHide:true,encoding:'utf8',timeout:30000});assert.equal(run.status,0,run.stderr);
     const nativeResult=JSON.parse(fs.readFileSync(path.join(nativeFolder,'browser-result.json'),'utf8'));
-    assert.equal(nativeResult.bundle.manifest.displayName, "기본 통신 · MCSR-LS");
+    assert.equal(nativeResult.bundle.manifest.displayName, "고부하 통신 · 12번 노드 고정");
     await evaluate(`openResultBundle(${JSON.stringify(nativeResult.bundle)})`);
     assert(await evaluate("!byId('nativeMetrics').hidden && byId('metricValues').children.length===8 && resultMeta.summary.received>0"));
     assert(await evaluate(`(()=>{
