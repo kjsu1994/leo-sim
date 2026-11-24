@@ -849,7 +849,7 @@ async function runNative(algorithms=null,research=null) {
           await openResultBundle((await response.json()).bundle);
           if (algorithms) {
             if(job.statistics) showExperimentStatistics(job.statistics);
-            else document.getElementById("btnCompare").click();
+            else await openComparison(job.completedRuns);
           }
           setStatus(algorithms ? `비교 실행 완료 · ${job.completedRuns.length}개` : "계산 완료");
         };

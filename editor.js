@@ -396,22 +396,166 @@ function hostExecutionLabel(host) {
   if (!host) return "기록 없음";
   return host.mode === "auto" ? "자동 · 동시 " + host.workers + "개" : "순차";
 }
+function comparisonWindow(run) {
+  const m=run.summary.measurement;
+  if(m) return [m.start,m.end,m.observedUntil];
+  return [0,run.config.simTimeLimit,run.config.simTimeLimit];
+}
+// Keep the offline comparison on the same environment fields as comparison.environment.
+const comparisonEnvironmentKeys = "warmupSeconds drainSeconds numSatellites planes phasing altitude inclination raanSpread baseYear baseDay epochYear epochDay bstar eccentricity simTimeLimit seed stations islDatarate groundlinkDatarate islDelay groundlinkDelay minimumElevation updateInterval queueCapacity intraDisabled interDisabled failureSchedule randomFailures randomStart randomEnd randomDuration failureSeed failureReplayEvents congestionMode congestionZones congestionRefresh congestionBuffer congestionPacketBytes scenario maxHops maxGroundLinks failureKnowledge slsInterval slsMissCount floodHopDelay failureScopeHops processingMode controlMode controlRefresh controlTimeout controlHeaderBytes controlRecordBytes jitterModel islMode scheduledEvents physicalEvents physicalEventsHash modelVersion metricVersion commonKernelHash commonSrd commonSrdHash controlMtu controlReassemblyTimeout controlResyncInterval controlProtocolVersion".split(" ");
+function comparableValue(value){
+  if(Array.isArray(value))return value.map(comparableValue);
+  if(value && typeof value==="object")return Object.fromEntries(Object.keys(value).sort().map(key=>[key,comparableValue(value[key])]));
+  return value??null;
+}
+function environmentDifferences(a,b){
+  const get=(c,k)=>{
+    let v=c[k];
+    if(k==="scenario" && v?.baseline)v={...v,baseline:{route:v.baseline.route}};
+    return JSON.stringify(comparableValue(v));
+  };
+  return comparisonEnvironmentKeys.filter(k=>get(a,k)!==get(b,k));
+}
+function comparisonVerdict(a,b) {
+  const different=[],missing=[];
+  function check(label,x,y) {
+    if(x==null || y==null || x==="" || y==="") missing.push(label);
+    else if(x!==y) different.push(label);
+  }
+  const hashes=[a.manifest.environmentHash,b.manifest.environmentHash];
+  if(!hashes.every(Boolean))missing.push("시험 환경");
+  if(environmentDifferences(a.config,b.config).length)different.push("시험 환경");
+
+  check("송신 기록",a.summary.trafficHash,b.summary.trafficHash);
+  check("장애 일정",a.manifest.physicalEventsHash,b.manifest.physicalEventsHash);
+  const aw=comparisonWindow(a),bw=comparisonWindow(b);
+  if(![...aw,...bw].every(Number.isFinite)) missing.push("측정 구간");
+  else check("측정 구간",aw.join("/"),bw.join("/"));
+  for(const r of [a,b]){
+    if(r.manifest.format!=="leo-native-replay-v4" || !r.summary.processingMode) missing.push("모델 기록");
+    else if(r.summary.processingMode!=="neutral") different.push("처리 지연 가정 적용");
+  }
+  if(different.length) return ["조건 다름",...new Set(different)];
+  if(missing.length) return ["확인 자료 부족",...new Set(missing)];
+  return ["동일 조건"];
+}
+function comparisonRow(body,values) {
+  const row=body.insertRow();for(const v of values)row.insertCell().textContent=v;
+}
+function recoveryCount(events){
+  if(!Array.isArray(events))return "기록 없음";
+  const cuts=events.filter(e=>!e.restore);
+  if(cuts.some(e=>!Array.isArray(e.flows)))return "기록 없음";
+  const flows=cuts.flatMap(e=>e.flows.filter(f=>f.affected));
+  if(!flows.length)return "영향받은 통신 없음";
+  if(flows.some(f=>!("stableRecoverySeconds" in f)))return "기록 없음";
+  return flows.filter(f=>Number.isFinite(f.stableRecoverySeconds)).length+" / "+flows.length;
+}
+function serviceTimeline(content,a,b) {
+  const runs=[a,b], events=new Map();
+  for(const [side,r] of runs.entries()){
+    const active=new Map();
+    for(const e of r.summary.recovery||[]){
+      const link=[Math.min(e.a,e.b),Math.max(e.a,e.b)].join("–");
+      if(e.restore){const item=active.get(link);if(item)item.end[side]=e.time;active.delete(link);continue;}
+      const key=e.time+"@"+link;
+      if(!events.has(key))events.set(key,{time:e.time,link,cut:[],end:[]});
+      const item=events.get(key);item.cut[side]=e;active.set(link,item);
+    }
+  }
+  const samples=runs.map(r=>{
+    const bins=new Map();
+    for(const [t,,,,rx,drop,,delay] of r.series||[]){
+      const row=bins.get(t)||[0,0,0];
+      row[0]+=rx;row[1]+=delay*rx;row[2]+=drop;bins.set(t,row);
+    }
+    return bins;
+  });
+  const tools=node("div",{class:"compare-controls qos-tools"});
+  const metric=node("select",{"aria-label":"그래프 지표"}),event=node("select",{"aria-label":"장애 구간"});
+  ["수신량 (패킷/초)","평균 지연 (ms)","폐기 (패킷)"].forEach((v,i)=>metric.add(new Option(v,i)));
+  event.add(new Option("전체 시간",""));
+  for(const [key,e] of [...events].sort((x,y)=>x[1].time-y[1].time))event.add(new Option(metricText(e.time,4)+"초 · 위성 "+e.link,key));
+  tools.append(metric,event);
+  const canvas=node("canvas",{width:840,height:210,role:"img","aria-label":"실행별 서비스 품질 시계열"}),caption=node("p",{class:"quiet"}),recovery=node("div",{class:"comparison-scroll"});
+  content.append(tools,canvas,caption,recovery);
+  function draw(){
+    const selected=events.get(event.value),k=Number(metric.value),limit=Math.max(...runs.map(r=>r.config.simTimeLimit||0));
+    const lo=selected?Math.max(0,selected.time-10):0;
+    const hi=selected?Math.min(limit,Math.max(...runs.map((r,i)=>selected.cut[i]?(selected.end[i]??r.config.simTimeLimit):0))+10):limit;
+    const points=samples.map(bins=>Array.from(bins,([t,row])=>[t,k===1?(row[0]?row[1]/row[0]:null):k===0?row[0]/(t-Math.max(0,Math.ceil(t)-1)):row[2]]).filter(([t])=>t>=lo&&t<=hi));
+    let peak=0;for(const series of points)for(const [,v] of series)if(Number.isFinite(v))peak=Math.max(peak,v);
+    const x=t=>52+770*(t-lo)/(hi-lo||1),y=v=>174-v*148/(peak||1);
+    const c=canvas.getContext("2d");c.clearRect(0,0,840,210);c.font="15px sans-serif";c.fillStyle="#bed0df";c.fillText(metricText(peak),3,25);c.fillText("0",28,176);c.fillText(metricText(lo)+" s",48,200);c.textAlign="right";c.fillText(metricText(hi)+" s",824,200);c.textAlign="left";
+    c.strokeStyle="#516079";c.strokeRect(52,24,770,150);
+    function marker(t,color){if(t<lo||t>hi)return;c.strokeStyle=color;c.beginPath();c.moveTo(x(t),24);c.lineTo(x(t),174);c.stroke();}
+    for(const e of events.values()){marker(e.time,"#b56a66");for(const end of new Set(e.end))if(Number.isFinite(end))marker(end,"#578f77");}
+    for(const [i,series] of points.entries()){
+      c.strokeStyle=i?"#ffbb76":"#5ec9ef";c.setLineDash(i?[6,4]:[]);c.beginPath();let prev=null;
+      for(const [t,v] of series){if(v==null){prev=null;continue;}if(prev===null||t-prev>1.000001){c.moveTo(x(t),y(v));c.lineTo(x(t)+1,y(v));}else c.lineTo(x(t),y(v));prev=t;}c.stroke();
+    }
+    c.setLineDash([]);
+    const same=points[0].some(p=>p[1]!=null)&&points[0].length===points[1].length&&points[0].every(([t,v],i)=>t===points[1][i][0]&&v===points[1][i][1]);
+    caption.textContent="실선 기준 · 점선 비교"+(events.size?" · 빨강 단절 / 녹색 재연결":"")+(same?" · 두 기록 일치":"")+(points.some(rows=>!rows.some(p=>p[1]!=null))?" · 관측값 없는 실행 포함":"");
+    recovery.replaceChildren();if(!selected)return;
+    const [table,body]=diagnosticTable(["영향받은 통신","기준","비교"]);
+    const pairs=new Set(selected.cut.flatMap(e=>(e?.flows||[]).filter(f=>f.affected).map(f=>f.source+" → "+f.destination)));
+    for(const pair of pairs){
+      const values=runs.map((r,i)=>{
+        const cut=selected.cut[i];if(!cut?.flows)return "기록 없음";
+        const f=cut.flows.find(f=>f.affected && f.source+" → "+f.destination===pair);if(!f)return "영향 없음";
+        const first=f.firstPacketRecoverySeconds??f.recoverySeconds;
+        if(first==null)return ("firstPacketRecoverySeconds" in f||"recoverySeconds" in f)?"관측 종료까지 미수신":"기록 없음";
+        return "첫 수신 "+metricText(first)+"초 · "+(Number.isFinite(f.stableRecoverySeconds)?"안정 복구 "+metricText(f.stableRecoverySeconds)+"초":"stableRecoverySeconds" in f?"안정 복구 미확인":"안정 복구 기록 없음");
+      });
+      comparisonRow(body,[pair,...values]);
+    }
+    if(!pairs.size)comparisonRow(body,["전체",...runs.map((r,i)=>selected.cut[i]?.flows?"영향받은 통신 없음":"기록 없음")]);
+    recovery.append(table);
+  }
+  metric.onchange=event.onchange=draw;draw();
+}
 function showComparison(a,b){
   byId("singleComparisonControls").hidden=false;
-  const sa=offered(a.summary),sb=offered(b.summary);const ca=a.config,cb=b.config;
-  const verified=a.manifest.format==="leo-native-replay-v4"&&b.manifest.format==="leo-native-replay-v4"&&sa.processingMode==="neutral"&&sb.processingMode==="neutral"&&sa.controlMode===sb.controlMode&&sa.jitterModel===sb.jitterModel&&a.manifest.physicalEventsHash===b.manifest.physicalEventsHash;
-  const sameTraffic=sa.trafficHash===sb.trafficHash,ha=a.manifest.environmentHash,hb=b.manifest.environmentHash;
-  byId("comparisonStatus").textContent=(verified&&ha&&ha===hb&&sameTraffic)?"동일한 환경·송신 조건입니다.":sameTraffic?"송신 조건은 동일합니다. 환경 설정 차이를 확인하세요.":"송신 조건이 다릅니다.";
-  const content=byId("comparisonContent");content.replaceChildren();const table=node("table"),head=table.createTHead().insertRow();for(const t of ["지표",`${sa.algorithm} (기준)`,`${sb.algorithm} (비교)`,"차이"])head.append(node("th",{},t));
-  const body=table.createTBody();
-  if (sa.hostExecution || sb.hostExecution) {
-    const row=body.insertRow();
-    for(const text of ["실행 방식",hostExecutionLabel(sa.hostExecution),hostExecutionLabel(sb.hostExecution),"—"]) row.insertCell().textContent=text;
+  const runs=[a,b],sa=offered(a.summary),sb=offered(b.summary);
+  const [status,...why]=comparisonVerdict(a,b),match=status==="동일 조건";
+  const desc=r=>scenarioName(r.config.activeConfig,r.config.displayName);
+  byId("comparisonStatus").textContent=[status,...why,desc(a)===desc(b)?desc(a):desc(a)+" / "+desc(b)].join(" · ");
+  const content=byId("comparisonContent");content.replaceChildren();
+  const names=runs.map((r,i)=>(i?"비교 · ":"기준 · ")+algorithmName({algorithm:r.summary.algorithm}));
+  const [table,body]=diagnosticTable(["측정 지표",...names,"차이"]);
+  function diff(key,unit,digits){
+    const values=runs.map(r=>measured(r.summary.measurement||offered(r.summary),key));
+    const delta=values[1]-values[0];return [...values.map(v=>metricText(v)),match&&values.every(Number.isFinite)?(delta>0?"+":"")+metricText(delta,digits)+" "+unit:"—"];
   }
-  const serialTiming=[sa,sb].every(summary => !summary.hostExecution || summary.hostExecution.mode==="sequential");
-  for(const key of Object.keys(metricLabels)){const av=measured(sa,key),bv=measured(sb,key),row=body.insertRow();for(const text of [metricLabels[key],metricText(av),metricText(bv),av==null||bv==null||(key==="elapsedSeconds"&&!serialTiming)?"—":metricText(bv-av)])row.insertCell().textContent=text;}
+  for(const [key,unit,digits] of [["deliveryRate","%p",3],["meanDelayMs","ms",4],["throughputMbps","Mbps",4]])comparisonRow(body,[metricLabels[key],...diff(key,unit,digits)]);
+  comparisonRow(body,["안정 복구 (확인 / 영향)",...runs.map(r=>recoveryCount(r.summary.recovery)),"—"]);
   content.append(table);
-  if (!serialTiming) content.append(node("p",{class:"quiet"},"자동 실행의 경과 시간에는 다른 실행과의 자원 경합이 반영될 수 있습니다."));
+  if(!match){
+    const intervals=r=>[...new Set((r.config.stations||[]).filter(s=>s.enabled).map(s=>s.sendInterval))].join(", ");
+    const senders=r=>(r.config.stations||[]).filter(s=>s.enabled);
+    const destinations=r=>[...new Set(senders(r).map(s=>s.dstStation>=0?"노드 "+s.dstStation:s.dstType==="mobile"?"이동 노드":"노드 중 선택"))].join(", ");
+    for(const [label,va,vb] of [["송신 간격 (초)",intervals(a),intervals(b)],["목적지",destinations(a),destinations(b)],["송신 노드 수",senders(a).length,senders(b).length],["시드",a.config.seed,b.config.seed],["위성 수",a.config.numSatellites,b.config.numSatellites],["큐 용량",a.config.queueCapacity,b.config.queueCapacity],["측정 구간 (초)",comparisonWindow(a).join(" / "),comparisonWindow(b).join(" / ")]])
+      if(va!==vb)content.append(node("p",{class:"quiet"},label+" · "+(va??"—")+" / "+(vb??"—")));
+  }
+  serviceTimeline(content,a,b);
+  const extra=node("details");extra.append(node("summary",{},"흐름·폐기·계산 상세"));content.append(extra);
+  const [detail,detailBody]=diagnosticTable(["시험 전체",...names]);extra.append(detail);
+  for(const [label,fn] of [
+    ["최대 대기 / 큐 용량",r=>metricText(r.summary.maxQueuePackets)+" / "+(r.config.queueCapacity===0?"무제한":metricText(r.config.queueCapacity))],
+    ["큐 폐기 (패킷)",r=>metricText(r.summary.dropReasons?(r.summary.dropReasons["queue-overflow"]||0):null)],
+    ["제어 전송 (MB)",r=>metricText(r.summary.control?.wireBytes/1e6)],["간선 검사",r=>metricText(r.summary.operations?.edgeChecks)],
+    ["실행 방식",r=>hostExecutionLabel(r.summary.hostExecution)]
+  ])comparisonRow(detailBody,[label,...runs.map(fn)]);
+  for(const key of new Set(runs.flatMap(r=>Object.keys(r.summary.dropReasons||{})))){
+    if(key!=="queue-overflow")comparisonRow(detailBody,["폐기 · "+key,...runs.map(r=>metricText(r.summary.dropReasons?(r.summary.dropReasons[key]||0):null))]);
+  }
+  for(const key of Object.keys(metricLabels))comparisonRow(detailBody,[metricLabels[key],...([sa,sb].map(s=>metricText(measured(s,key))))]);
+  const flowMaps=runs.map(r=>new Map((r.summary.flows||[]).map(f=>[f.source+" → "+f.destination,f])));
+  for(const pair of new Set([...flowMaps[0].keys(),...flowMaps[1].keys()])){
+    comparisonRow(detailBody,[pair+" · 수신 / 발생",...flowMaps.map(map=>{const f=map.get(pair);return f?metricText(f.received)+" / "+metricText(f.attempted):"—";})]);
+  }
+  if(runs.some(r=>r.summary.hostExecution?.mode==="auto"))extra.append(node("p",{class:"quiet"},"동시 실행 시 계산 시간에 자원 경합이 포함됩니다."));
   const settings=node("details");settings.append(node("summary",{},"알고리즘 설정 차이"));for(const key of new Set([...Object.keys(a.manifest.algorithmSettings||{}),...Object.keys(b.manifest.algorithmSettings||{})])){const av=a.manifest.algorithmSettings?.[key],bv=b.manifest.algorithmSettings?.[key];if(av!==bv)settings.append(node("p",{class:"quiet"},`${key}: ${av??"—"} → ${bv??"—"}`));}content.append(settings);
   const capture=node("button",{type:"button"},"기준 경로를 혼잡 설정에 사용");capture.onclick=()=>{const route=a.routes[0];if(!route){byId("comparisonStatus").textContent="기준 결과에 경로가 없습니다.";return;}nativeUI.baseline={runId:a.runId,route:route[6],time:route[0]};byId("comparisonStatus").textContent=`기준 경로 ${route[6].join(" → ")} 선택됨`;render();};content.append(capture);
 }
@@ -419,13 +563,31 @@ async function readComparisonFolder(files){
   return prepareBundle(await bundleFromFiles([...files]),msg=>byId("comparisonStatus").textContent=msg);
 }
 for(const [id,key]of [["baselineFolder","a"],["comparisonFolder","b"]])byId(id).onchange=async e=>{try{const result=await readComparisonFolder(e.target.files);if(!result.summary)throw Error("수신 통계가 포함된 실행 결과를 선택하세요.");comparisonInputs[key]=result;byId("comparisonStatus").textContent=`${key==="a"?"기준":"비교"} 실행: ${result.runId}`;if(comparisonInputs.a&&comparisonInputs.b)showComparison(comparisonInputs.a,comparisonInputs.b);}catch(err){byId("comparisonStatus").textContent=err.message;}};
-byId("btnCompare").onclick=async()=>{
+byId("btnCompare").onclick=()=>openComparison();
+async function openComparison(finished=[]){
+  byId("comparisonContent").replaceChildren();
   byId("singleComparisonControls").hidden=false;
   byId("compareDialog").showModal();byId("comparisonStatus").textContent="";
   const online=location.protocol!=="file:";for(const id of ["baselineRun","scenarioRun","loadComparison"])byId(id).disabled=!online;if(!online)return;
   try{const response=await fetch("/api/experiments"),rows=await response.json();if(response.ok&&Array.isArray(rows)){byId("experimentHistoryRow").hidden=!rows.length;byId("experimentHistory").replaceChildren();for(const row of rows)byId("experimentHistory").add(new Option(`${scenarioName(row.configName, row.displayName)} · 시드 ${row.seeds.length}개 · ${row.experimentId}`,row.experimentId));}}catch(e){byId("experimentHistoryRow").hidden=true;}
-  try{const response=await fetch("/api/runs");const list=await response.json();for(const id of ["baselineRun","scenarioRun"]){const select=byId(id);select.replaceChildren();for(const r of list)select.add(new Option(`${scenarioName(r.configName, r.displayName)} · ${algorithmName({algorithm:r.summary.algorithm})} · ${r.runId}`,r.runId));}if(nativeUI.result)byId("scenarioRun").value=nativeUI.result.runId;if(list.length>1)byId("baselineRun").selectedIndex=1;}catch(e){byId("comparisonStatus").textContent=e.message;}
-};
+  try{
+    const response=await fetch("/api/runs?metadata=1");
+    if(!response.ok)throw Error("보관된 실행 목록을 읽을 수 없습니다.");
+    const list=(await response.json()).filter(r=>r.algorithm);
+    for(const id of ["baselineRun","scenarioRun"]){
+      const select=byId(id);select.replaceChildren();
+      for(const r of list)select.add(new Option(scenarioName(r.configName,r.displayName)+" · "+algorithmName({algorithm:r.algorithm})+" · "+r.runId,r.runId));
+    }
+    const baseline=byId("baselineRun"),other=byId("scenarioRun");
+    if(finished.length>=2 && finished.slice(0,2).every(row=>list.some(r=>r.runId===row.runId))){
+      baseline.value=finished[0].runId;other.value=finished[1].runId;
+      if(byId("compareDialog").open)await byId("loadComparison").onclick();
+    }else{
+      if(list.some(r=>r.runId===nativeUI.result?.runId))other.value=nativeUI.result.runId;
+      baseline.value=list.find(r=>r.runId!==other.value)?.runId||other.value;
+    }
+  }catch(e){byId("comparisonStatus").textContent=e.message;}
+}
 byId("loadExperiment").onclick=async()=>{try{const response=await fetch(`/api/experiments/${encodeURIComponent(value("experimentHistory"))}`),report=await response.json();if(!response.ok)throw Error(report.error);showExperimentStatistics(report);}catch(e){byId("comparisonStatus").textContent=e.message;}};
 function showExperimentStatistics(report){
   byId("singleComparisonControls").hidden=true;

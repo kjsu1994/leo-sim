@@ -175,6 +175,15 @@ class JobV2Tests(unittest.TestCase):
             self.assertEqual(bundle['files']['config/simulations/Network/scenarios.ini'].encode(),before)
             for name,digest in bundle['manifest']['files'].items():self.assertEqual(hashlib.sha256(bundle['files'][name].encode()).hexdigest(),digest)
             self.assertTrue(compare_bundles(bundle,bundle)['comparable'])
+            from comparison import ENV_KEYS
+            ui=(Path(server.BASE_DIR)/'editor.js').read_text(encoding='utf8')
+            self.assertIn('const comparisonEnvironmentKeys = "'+' '.join(ENV_KEYS)+'"',ui)
+            missing={**bundle,'manifest':{**bundle['manifest'],'physicalEventsHash':None}}
+            report=compare_bundles(missing,missing)
+            self.assertEqual(report['conditionStatus'],'unknown')
+            self.assertTrue(all(m['difference'] is None for m in report['metrics']))
+            changed={**bundle,'manifest':{**bundle['manifest'],'physicalEventsHash':'other'}}
+            self.assertEqual(compare_bundles(bundle,changed)['conditionStatus'],'different')
             pointer=(base/'data/latest.json').read_bytes();edit(ini,'Dijkstra132',{'simTimeLimit':1000000,'sendInterval':.00001},reader)
             job=run_manager.start(base,settings,ini,'Dijkstra132',reader);time.sleep(.2);start=time.monotonic();run_manager.cancel(job['runId'])
             while run_manager.state(job['runId'])['status'] in ('queued','running','stopping'):

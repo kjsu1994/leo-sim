@@ -183,3 +183,10 @@ body:has(#sidePanel[hidden]) .map-metrics > div:first-child { display: none; }
 .link-event { display: inline-block; padding: 2px 5px; border-radius: 4px; white-space: nowrap; }
 .link-event.cut { background: #442931; color: #ffc7ba; }
 .link-event.restored { background: #183e40; color: #9de7d6; }
+
+#comparisonContent canvas { width: 100%; height: auto; display: block; background: #101c2d; border-radius: 6px; }
+#comparisonContent .qos-tools { padding: 14px 0 8px; }
+#comparisonContent details { margin-top: 12px; }
+#comparisonContent summary { cursor: pointer; }
+#comparisonContent td, #comparisonContent th { overflow-wrap: anywhere; }
+@media(max-width:700px){#comparisonContent table td,#comparisonContent table th{padding:6px 4px;font-size:12px}}

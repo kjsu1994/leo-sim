@@ -92,11 +92,23 @@ def compare_bundles(a,b):
     ca,sa=load(a);cb,sb=load(b);ea,eb=environment(ca),environment(cb)
     differences=[k for k in ENV_KEYS if ea[k]!=eb[k]]
     physical=[k for k in differences if k not in ('scenario','congestionZones','congestionMode')]
-    same_traffic=sa.get('trafficHash')==sb.get('trafficHash')
+    def window(config, summary):
+        m=summary.get('measurement')
+        return (m.get('start'),m.get('end'),m.get('observedUntil')) if m is not None else (0,config.get('simTimeLimit'),config.get('simTimeLimit'))
+    physical_hash=(a['manifest'].get('physicalEventsHash'),b['manifest'].get('physicalEventsHash'))
+    traffic=(sa.get('trafficHash'),sb.get('trafficHash'))
+    same_traffic=bool(all(traffic) and traffic[0]==traffic[1])
+    windows=(window(ca,sa),window(cb,sb))
+    known=all(bundle['manifest'].get('environmentHash') for bundle in (a,b)) and all(physical_hash) and all(traffic) and all(None not in w for w in windows)
+    verified=all(bundle['manifest'].get('format')=='leo-native-replay-v4' for bundle in (a,b)) and all(s.get('processingMode') for s in (sa,sb))
+    mismatch=bool(differences or any(x and y and x!=y for x,y in [physical_hash,traffic]) or
+                  (all(None not in w for w in windows) and windows[0]!=windows[1]) or
+                  any(s.get('processingMode') not in (None,'neutral') for s in (sa,sb)))
+    comparable=known and verified and not mismatch
     metrics=('attempted','sent','received','dropped','deliveryRate','meanDelayMs','throughputMbps','replanned','reservedSwitches','peakMemoryBytes','elapsedSeconds')
-    return {'comparable':a['manifest'].get('format')==b['manifest'].get('format')=='leo-native-replay-v4' and ca.get('processingMode')==cb.get('processingMode')=='neutral' and not differences and same_traffic,'trafficMatches':same_traffic,'differences':differences,
+    return {'comparable':comparable,'conditionStatus':'different' if mismatch else 'same' if comparable else 'unknown','trafficMatches':same_traffic,'differences':differences,
             'physicalDifferences':physical,'baseline':sa,'scenario':sb,
-            'metrics':[{'name':k,'baseline':sa.get(k),'scenario':sb.get(k),'difference':sb[k]-sa[k] if isinstance(sa.get(k),(int,float)) and isinstance(sb.get(k),(int,float)) else None} for k in metrics]}
+            'metrics':[{'name':k,'baseline':sa.get(k),'scenario':sb.get(k),'difference':sb[k]-sa[k] if comparable and isinstance(sa.get(k),(int,float)) and isinstance(sb.get(k),(int,float)) else None} for k in metrics]}
 
 def compare(base,a,b,*,results=None):
     paths=[folder(base,run_id,results=results) for run_id in (a,b)]

@@ -241,7 +241,25 @@ async function retry(fn,attempts=300) { for (let i=0;i<attempts;i++) { try { ret
 
     await evaluate("showComparison(resultMeta,resultMeta)");
     assert(await evaluate("!byId('singleComparisonControls').hidden"));
-    assert(await evaluate("byId('comparisonStatus').textContent.includes('동일한 환경')"));
+    assert(await evaluate("byId('comparisonStatus').textContent.includes('동일 조건')"));
+    await evaluate(`(()=>{
+      const r=resultMeta, missing={...r,manifest:{...r.manifest,physicalEventsHash:null}};
+      showComparison(missing,missing);
+      if(!byId('comparisonStatus').textContent.includes('확인 자료 부족'))throw Error('missing evidence');
+      const event={a:1,b:2,time:1,restore:false,flows:[{source:0,destination:1,affected:true,firstPacketRecoverySeconds:.2,stableRecoverySeconds:null}]};
+      const withEvent={...r,summary:{...r.summary,recovery:[event]}};
+      const other={...r,summary:{...r.summary,trafficHash:'other',recovery:[{...event,flows:[]}]}};
+      showComparison(withEvent,other);
+      const view=byId('comparisonContent'),picker=view.querySelector('[aria-label="장애 구간"]');
+      picker.selectedIndex=1;picker.onchange();
+      if(!byId('comparisonStatus').textContent.includes('조건 다름') || !view.textContent.includes('안정 복구 미확인') || !view.textContent.includes('영향 없음'))throw Error('fault comparison');
+      if(!view.querySelector('canvas') || recoveryCount(undefined)!=='기록 없음' || recoveryCount([])!=='영향받은 통신 없음')throw Error('legacy recovery');
+      const lost={...event,flows:[{source:0,destination:1,affected:true,firstPacketRecoverySeconds:null,stableRecoverySeconds:null}]};
+      showComparison(withEvent,{...r,summary:{...r.summary,recovery:[lost]},series:[[1,0,1,2,0,2,0,0,0]]});
+      const lossPicker=view.querySelector('[aria-label="장애 구간"]');lossPicker.selectedIndex=1;lossPicker.onchange();
+      if(!view.textContent.includes('관측 종료까지 미수신'))throw Error('unreceived flow');
+      showComparison(r,r);
+    })()`);
     assert.equal(await evaluate("lastSatStates.length"),132);
     await evaluate("(async()=>{await openResultBundle((await fetch('/api/result').then(r=>r.json())).bundle)})()");
     assert(await evaluate("byId('nativeMetrics').hidden === !resultMeta.summary"));
