@@ -111,6 +111,7 @@ async function retry(fn,attempts=300) { for (let i=0;i<attempts;i++) { try { ret
     await new Promise(r=>setTimeout(r,300));
     assert.equal(await evaluate("lastSatStates.length"),132);
     await evaluate("(async()=>{await openResultBundle((await fetch('/api/result').then(r=>r.json())).bundle);simTime=599.5;render()})()");
+    assert(await evaluate("selectedConfig.activeConfig === 'Dijkstra132Hop' && cfgNameSel.value === 'Dijkstra132Hop' && resultMeta.config.activeConfig === 'Dijkstra132'"));
     assert.equal(await evaluate("stateAt(simTime).t"),599.5);
     await evaluate("clearResult();routes=parseRoutesCsv("+JSON.stringify(fs.readFileSync(path.join(__dirname,"testdata/bundle/routes.csv"),"utf8"))+");simTime=30;render()");
     assert.equal(await evaluate("states.length"),0);

@@ -29,7 +29,12 @@ function clearResult() {
 function installResult(result) {
   clearResult();
   previewConfig=null;routes = result.routes; states = result.states; resultMeta = result;
-  applyLoadedConfig(result.config, { result: true });
+  if (location.protocol === "file:") {
+    applyLoadedConfig(result.config, { result: true });
+  } else {
+    updateOrbitConfig({ ...result.config, minEl: result.config.minimumElevation });
+    populateFilters();
+  }
   syncTimeBounds(result.replay ? result.config.simTimeLimit : states.at(-1)?.t);
   setStatus(`${scenarioName(result.config.activeConfig, result.config.displayName)} · ${algorithmName(result.config)} 실행 결과를 불러왔습니다.`);
   render();
@@ -322,7 +327,7 @@ function render() {
   document.getElementById("mapSatellites").textContent = snapshot ? `${sats.length.toLocaleString("ko-KR")}기` : "—";
   document.getElementById("mapIsl").textContent = snapshot ? `${islCount.toLocaleString("ko-KR")}개` : "—";
   document.getElementById("mapGroundLinks").textContent = snapshot ? `${gslLinks.length.toLocaleString("ko-KR")}개` : "—";
-  document.getElementById("mapRouting").textContent = `${scenarioName(resultMeta?.config.activeConfig || previewConfig?.activeConfig || "CSV", (resultMeta?.config || previewConfig)?.displayName)} · ${algorithmName(resultMeta?.config||previewConfig)}${resultMeta?.summary?.experimental?" · 환경/실험 설정":""}`;
+  document.getElementById("mapRouting").textContent = `${resultMeta ? "재생 중인 결과 · " : ""}${scenarioName(resultMeta?.config.activeConfig || previewConfig?.activeConfig || "CSV", (resultMeta?.config || previewConfig)?.displayName)} · ${algorithmName(resultMeta?.config||previewConfig)}${resultMeta?.summary?.experimental?" · 환경/실험 설정":""}`;
   document.getElementById("mapSample").textContent = snapshot && !resultMeta ? "설정 미리보기 · 실행 결과와 별도" : snapshot ? (snapshot.reconstructed ? "설정 기반 재현 · 기록된 경로" : `Engine sample: ${snapshot.t.toFixed(3)} s | no interpolation`) : "No engine state for this data";
 
   document.getElementById("timeLabel").textContent = `t = ${playbackTime(simTime)} s`;
