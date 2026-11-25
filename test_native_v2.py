@@ -175,6 +175,8 @@ class JobV2Tests(unittest.TestCase):
             self.assertEqual(bundle['files']['config/simulations/Network/scenarios.ini'].encode(),before)
             for name,digest in bundle['manifest']['files'].items():self.assertEqual(hashlib.sha256(bundle['files'][name].encode()).hexdigest(),digest)
             self.assertTrue(compare_bundles(bundle,bundle)['comparable'])
+            other={**bundle,'manifest':{**bundle['manifest'],'environmentHash':'other'}}
+            self.assertEqual(compare_bundles(bundle,other)['conditionStatus'],'different')
             from comparison import ENV_KEYS
             ui=(Path(server.BASE_DIR)/'editor.js').read_text(encoding='utf8')
             self.assertIn('const comparisonEnvironmentKeys = "'+' '.join(ENV_KEYS)+'"',ui)

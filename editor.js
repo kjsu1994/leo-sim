@@ -423,7 +423,7 @@ function comparisonVerdict(a,b) {
     else if(x!==y) different.push(label);
   }
   const hashes=[a.manifest.environmentHash,b.manifest.environmentHash];
-  if(!hashes.every(Boolean))missing.push("시험 환경");
+  check("시험 환경",...hashes);
   if(environmentDifferences(a.config,b.config).length)different.push("시험 환경");
 
   check("송신 기록",a.summary.trafficHash,b.summary.trafficHash);
@@ -433,7 +433,7 @@ function comparisonVerdict(a,b) {
   else check("측정 구간",aw.join("/"),bw.join("/"));
   for(const r of [a,b]){
     if(r.manifest.format!=="leo-native-replay-v4" || !r.summary.processingMode) missing.push("모델 기록");
-    else if(r.summary.processingMode!=="neutral") different.push("처리 지연 가정 적용");
+    if(r.summary.processingMode && r.summary.processingMode!=="neutral") different.push("처리 지연 가정 적용");
   }
   if(different.length) return ["조건 다름",...new Set(different)];
   if(missing.length) return ["확인 자료 부족",...new Set(missing)];
@@ -496,7 +496,9 @@ function serviceTimeline(content,a,b) {
     }
     c.setLineDash([]);
     const same=points[0].some(p=>p[1]!=null)&&points[0].length===points[1].length&&points[0].every(([t,v],i)=>t===points[1][i][0]&&v===points[1][i][1]);
-    caption.textContent="실선 기준 · 점선 비교"+(events.size?" · 빨강 단절 / 녹색 재연결":"")+(same?" · 두 기록 일치":"")+(points.some(rows=>!rows.some(p=>p[1]!=null))?" · 관측값 없는 실행 포함":"");
+    const ranges=runs.map(r=>comparisonWindow(r).slice(0,2).map(v=>Number.isFinite(v)?metricText(v,4):"—").join("–")+"초");
+    const windowLabel=ranges[0]===ranges[1]?"측정 "+ranges[0]:"측정 기준 "+ranges[0]+" / 비교 "+ranges[1];
+    caption.textContent=windowLabel+" · 1초 구간 집계 · 실선 기준 / 점선 비교"+(events.size?" · 장애선은 실제 모의 시각 (빨강 단절 / 녹색 재연결)":"")+(same?" · 두 기록 일치":"")+(points.some(rows=>!rows.some(p=>p[1]!=null))?" · 관측값 없는 실행 포함":"");
     recovery.replaceChildren();if(!selected)return;
     const [table,body]=diagnosticTable(["영향받은 통신","기준","비교"]);
     const pairs=new Set(selected.cut.flatMap(e=>(e?.flows||[]).filter(f=>f.affected).map(f=>f.source+" → "+f.destination)));
@@ -520,7 +522,7 @@ function showComparison(a,b){
   const runs=[a,b],sa=offered(a.summary),sb=offered(b.summary);
   const [status,...why]=comparisonVerdict(a,b),match=status==="동일 조건";
   const desc=r=>scenarioName(r.config.activeConfig,r.config.displayName);
-  byId("comparisonStatus").textContent=[status,...why,desc(a)===desc(b)?desc(a):desc(a)+" / "+desc(b)].join(" · ");
+  byId("comparisonStatus").textContent=[...(a.runId && a.runId===b.runId?["같은 실행 결과를 선택했습니다"]:[]),status,...why,desc(a)===desc(b)?desc(a):desc(a)+" / "+desc(b)].join(" · ");
   const content=byId("comparisonContent");content.replaceChildren();
   const names=runs.map((r,i)=>(i?"비교 · ":"기준 · ")+algorithmName({algorithm:r.summary.algorithm}));
   const [table,body]=diagnosticTable(["측정 지표",...names,"차이"]);

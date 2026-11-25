@@ -15,6 +15,7 @@ async function retry(fn,attempts=300) { for (let i=0;i<attempts;i++) { try { ret
   for(const file of ["index.html","app.js","editor.js","orbit.js","csv.js","bundle.js","style.css","sim-ui.ico","data/earth.png",brandAsset])fs.copyFileSync(path.join(__dirname,file),path.join(httpRoot,file));
   fs.cpSync(path.join(__dirname,"settings"),path.join(httpRoot,"settings"),{recursive:true});
   if(!stored){
+    fs.copyFileSync(path.join(httpRoot,"settings/simulations/Network/scenarios.defaults"),path.join(httpRoot,"settings/simulations/Network/scenarios.ini"));
     fs.appendFileSync(path.join(httpRoot,"settings/simulations/Network/scenarios.ini"),
       "\n[Config LabelFixture]\nextends = Dijkstra132\ndisplayName = \"내 설정 시험\"\nadditional = true\n[Config 까를로잇테스트]\nextends = LabelFixture\n");
   }
@@ -245,6 +246,10 @@ async function retry(fn,attempts=300) { for (let i=0;i<attempts;i++) { try { ret
     assert(await evaluate("byId('comparisonStatus').textContent.includes('동일 조건')"));
     await evaluate(`(()=>{
       const r=resultMeta, missing={...r,manifest:{...r.manifest,physicalEventsHash:null}};
+      if(!byId('comparisonStatus').textContent.includes('같은 실행 결과'))throw Error('same run warning');
+      const mismatch={...r,runId:'distinct-run',manifest:{...r.manifest,environmentHash:'other'}};
+      showComparison(r,mismatch);
+      if(!byId('comparisonStatus').textContent.includes('조건 다름') || byId('comparisonStatus').textContent.includes('같은 실행 결과'))throw Error('environment fingerprint');
       showComparison(missing,missing);
       if(!byId('comparisonStatus').textContent.includes('확인 자료 부족'))throw Error('missing evidence');
       const event={a:1,b:2,time:1,restore:false,flows:[{source:0,destination:1,affected:true,firstPacketRecoverySeconds:.2,stableRecoverySeconds:null}]};
@@ -334,6 +339,47 @@ async function retry(fn,attempts=300) { for (let i=0;i<attempts;i++) { try { ret
       const {nodeId}=await send("DOM.querySelector",{nodeId:root.nodeId,selector:"#resultFolder"});
       await send("DOM.setFileInputFiles",{nodeId,files:[folder]});
     };
+    // Read expected values from the archive independently of the UI formatter.
+    const source=path.join(nativeFolder,'data','runs',nativeResult.bundle.manifest.runId);
+    const keys=['attempted','received','dropped','inFlight','deliveryRate','meanDelayMs','throughputMbps','maxQueuePackets'];
+    const cards=()=>evaluate("[...byId('metricValues').querySelectorAll('strong')].map(e=>e.textContent)");
+    const readJson=(folder,file)=>JSON.parse(fs.readFileSync(path.join(folder,file),'utf8'));
+    const first=readJson(source,'summary.json');
+    await selectFolder(source);
+    await retry(async()=>assert.equal(await evaluate("resultMeta.runId"),nativeResult.bundle.manifest.runId));
+    assert.deepEqual(await cards(),keys.map(k=>first[k].toLocaleString('ko-KR',{maximumFractionDigits:2})));
+    assert(await evaluate("byId('flowMetrics').tBodies[0].rows.length>0"));
+    // Isolate missing observations in a second, checksum-valid package.
+    const second=path.join(profile,'no-receptions');
+    fs.cpSync(source,second,{recursive:true});
+    const manifest=readJson(second,'manifest.json');
+    manifest.runId='no-receptions';
+    const hash=data=>require('node:crypto').createHash('sha256').update(data).digest('hex');
+    for(const [file,data] of Object.entries({
+      'summary.json':JSON.stringify({...first,attempted:17,received:0,dropped:15,inFlight:2,deliveryRate:0,meanDelayMs:0,throughputMbps:0,maxQueuePackets:13,flows:[],control:null,operations:null,recovery:[]}),
+      'timeseries.csv':'time,source,destination,generated,received,dropped,throughput,delay,queue\n',
+      'control-series.csv':'time,generated,accepted,dropped,frames,bytes,loss,queue\n'
+    })){
+      fs.writeFileSync(path.join(second,file),data);
+      manifest.files[file]=hash(data);
+    }
+    const manifestText=JSON.stringify(manifest);
+    fs.writeFileSync(path.join(second,'manifest.json'),manifestText);
+    fs.writeFileSync(path.join(second,'completed.json'),JSON.stringify({runId:manifest.runId,manifestSHA256:hash(manifestText)}));
+    await selectFolder(second);
+    await retry(async()=>assert.equal(await evaluate("resultMeta.runId"),manifest.runId));
+    const expected=['17','0','15','2','0','—','0','13'];
+    assert.deepEqual(await cards(),expected);
+    await evaluate("byId('btnMetricDetails').click()");
+    assert(await evaluate("byId('flowMetrics').tBodies[0].rows.length===0 && byId('metricFlow').options.length===1 && byId('chartCaption').textContent.includes('측정값이 없습니다') && byId('researchMetrics').querySelector('strong').textContent==='—'"));
+    await evaluate("byId('metricDetails').close()");
+    fs.appendFileSync(path.join(second,'summary.json'),' ');
+    await selectFolder(source);
+    await retry(async()=>assert.equal(await evaluate("resultMeta.runId"),nativeResult.bundle.manifest.runId));
+    await selectFolder(second);
+    await retry(async()=>assert(await evaluate("byId('runStatus').textContent.includes('기존 화면을 유지')")));
+    assert.equal(await evaluate("resultMeta.runId"),nativeResult.bundle.manifest.runId);
+    assert.deepEqual(await cards(),keys.map(k=>first[k].toLocaleString('ko-KR',{maximumFractionDigits:2})));
     await selectFolder(validBundle);
     await retry(async()=>assert(await evaluate("resultMeta?.runId==='reference-dijkstra'")));
     assert.equal(await evaluate("lastSatStates.length"),132);

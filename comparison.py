@@ -95,13 +95,14 @@ def compare_bundles(a,b):
     def window(config, summary):
         m=summary.get('measurement')
         return (m.get('start'),m.get('end'),m.get('observedUntil')) if m is not None else (0,config.get('simTimeLimit'),config.get('simTimeLimit'))
+    env_hash=(a['manifest'].get('environmentHash'),b['manifest'].get('environmentHash'))
     physical_hash=(a['manifest'].get('physicalEventsHash'),b['manifest'].get('physicalEventsHash'))
     traffic=(sa.get('trafficHash'),sb.get('trafficHash'))
     same_traffic=bool(all(traffic) and traffic[0]==traffic[1])
     windows=(window(ca,sa),window(cb,sb))
     known=all(bundle['manifest'].get('environmentHash') for bundle in (a,b)) and all(physical_hash) and all(traffic) and all(None not in w for w in windows)
     verified=all(bundle['manifest'].get('format')=='leo-native-replay-v4' for bundle in (a,b)) and all(s.get('processingMode') for s in (sa,sb))
-    mismatch=bool(differences or any(x and y and x!=y for x,y in [physical_hash,traffic]) or
+    mismatch=bool(differences or any(x and y and x!=y for x,y in [env_hash,physical_hash,traffic]) or
                   (all(None not in w for w in windows) and windows[0]!=windows[1]) or
                   any(s.get('processingMode') not in (None,'neutral') for s in (sa,sb)))
     comparable=known and verified and not mismatch
